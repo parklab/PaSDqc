@@ -1,7 +1,7 @@
 import pathlib2
 import pandas as pd
 import numpy as np
-import pybedtools as pybt
+# import pybedtools as pybt
 import subprocess
 import os
 import argparse
@@ -12,22 +12,22 @@ def exec_cmd(cmd, verbose=True):
 
     p = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE).stdout.read()
 
-def bed_to_pos(bed, f_out):
-    """ Convert bed file with regions to bed file specifiying individual positions
-        contained in those regions
-
-        Args:
-            bed     bed file
-    """
-    f = open(f_out, 'w')
-
-    for line in bed:
-        chrm = line[0]
-        start = int(line[1])
-        end = int(line[2])
-
-        for i in range(start, end):
-            f.write("{}\t{}\t{}\n".format(chrm, i, i+1))
+# def bed_to_pos(bed, f_out):
+#     """ Convert bed file with regions to bed file specifiying individual positions
+#         contained in those regions
+# 
+#         Args:
+#             bed     bed file
+#     """
+#     f = open(f_out, 'w')
+# 
+#     for line in bed:
+#         chrm = line[0]
+#         start = int(line[1])
+#         end = int(line[2])
+# 
+#         for i in range(start, end):
+#             f.write("{}\t{}\t{}\n".format(chrm, i, i+1))
 
 def map_to_bed(f_map, dir_out, build='grch37'):
     """ Split a file listing unique regions across genome into bed files per chrom
@@ -73,6 +73,7 @@ def uniq_pos_by_chrm(bam_file, chrom, out_file, map_qual=30, build='hg19'):
     cmd = "samtools view -q {map_qual} -L {map_file} {bam_file} {chrom} | cut -f 3,4 | uniq > {out_file}".format(**kwargs) 
 
     exec_cmd(cmd)
+    # exec_cmd(cmd, verbose=True)
 
 def depth_at_pos(bam_file, pos_file, chrom, out_file, map_qual=30):
     """ Extract depth at positions specified in a file.
@@ -87,6 +88,7 @@ def depth_at_pos(bam_file, pos_file, chrom, out_file, map_qual=30):
     cmd = "samtools view -uh -q {map_qual} {bam_file} {chrom} | samtools depth -b {pos_file} - > {out_file}".format(**kwargs)
 
     exec_cmd(cmd)
+    # exec_cmd(cmd, verbose=True)
 
 def extract_coverage(bam_file, out_dir, chrom_list, build='hg19', map_qual=30):
     """ Efficiently extract coverage at uniquely mappable positions 
@@ -96,6 +98,7 @@ def extract_coverage(bam_file, out_dir, chrom_list, build='hg19', map_qual=30):
           1) Extract uniq map'ble positions from bam file
           2) Determine coverage at extracted positions
     """
+    # print('something')
     p_bam = pathlib2.Path(bam_file)
     p_out = pathlib2.Path(out_dir)
 

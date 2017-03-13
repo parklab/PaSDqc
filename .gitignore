@@ -1,4 +1,5 @@
 tmp
 tmp/
+__pycache__/
 *.ipynb
 *.lsf

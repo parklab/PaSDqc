@@ -7,6 +7,15 @@ import seaborn as sns
 import re
 import pathlib2
 
+def chroms_from_build(build):
+    chroms = {'grch37': [i for i in range(1, 23)] + ['X', 'Y'],
+    }
+
+    try:
+        return chroms[build]
+    except KeyError:
+        raise ValueError("Oops, I don't recognize the build {}".format(build))
+
 def symmetric_KL(psd_1, psd_2):
     """ Calculate the approximate symmetric KL divergence between to power spectra
     """
@@ -51,8 +60,8 @@ def plot_KL_div_by_chrom(j):
     return f
 
 def PSD_to_ACF(freq, psd, lags):
-    """ Convert PSD to ACF using the Wiener-Khinchin theorem
-        Simple approximation using right rectangle rule
+    """ Convert PSD to ACF using the Wiener-Khinchin theorem.
+        Approximates the integral using the right rectangle rule
     """
     freq_sym = np.append(-freq[::-1], freq) 
     psd_sym = np.append(psd[::-1], psd)
@@ -66,3 +75,16 @@ def PSD_to_ACF(freq, psd, lags):
     acf = acf.sum(axis=0)
 
     return acf
+
+def PSD_sym_KL(u, v):
+    """ Calculate the symmetric KL divergence between two spectral densities
+        j = sum( u / v + v / u - 2)
+    """
+    j = (u / v + v / u - 2).sum()
+
+def hclust(nd, method='ward'):
+    """ Perform heirarchical clustering of PSDs using the symmetric KL divergence
+    """
+    dist = hc.distance.pdist(nd, PSD_sym_KL)
+    link = hc.linkage(dist, method)
+
