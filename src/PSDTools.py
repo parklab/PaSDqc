@@ -194,11 +194,15 @@ class SamplePSD(object):
         self.df = df
 
     @classmethod
-    def build_from_dir(cls, d_path):
+    def build_from_dir(cls, d_path, sample=None):
         """ Build SamplePSD object from a directory of .cov files
         """
+        pattern = "*.cov"
+        if sample:
+            pattern = sample + pattern
+
         p = pathlib2.Path(d_path)
-        file_list = sorted(p.glob("*.cov"))
+        file_list = sorted(p.glob(pattern))
         name = cls.name_from_file(file_list[0])
 
         df = cls._build_dataframe(file_list)
@@ -240,14 +244,6 @@ class SamplePSD(object):
 
         return df
 
-    # @staticmethod
-    # def symmetric_KL(psd_1, psd_2):
-    #     """ Calculate the approximate symmetric KL divergence between
-    #     """
-    #     KL = (psd_1 / psd_2 + psd_2 / psd_1 - 2).sum()
-
-    #     return KL
-
     # def avg_PSD(self, f_chrom_sizes):
     def avg_PSD(self):
         """ Perform weighted average of PSD estimates across all chromosomes
@@ -275,24 +271,5 @@ class SamplePSD(object):
 
         return j
 
-    # @staticmethod
-    # def plot_KL_div_by_chrom(j):
-    #     f = plt.figure()
-    #     ax = f.add_subplot(111)
-
-    #     mu = j.median()
-    #     mad = np.median(np.abs(j - mu))
-
-    #     chroms = j.index.tolist()
-    #     chroms[-2:] = ['23', '24']
-    #     chroms = [int(c) for c in chroms]
-
-    #     ax.plot(chroms, j, 'o')
-    #     ax.plot(chroms, [mu+mad for i in range(len(chroms))], '.')
-
-    #     chroms = sorted(chroms)
-    #     ax.xaxis.set_ticks(chroms)
-    #     chroms[-2:] = ['X', 'Y']
-    #     ax.xaxis.set_ticklabels(chroms)
-
-    #     return f
+    def save(self, f_out):
+        self.df.to_csv(f_out, sep="\t", header=True, index=True)

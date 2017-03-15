@@ -1,6 +1,7 @@
 
 import os
 import argparse
+import pathlib2
 import multiprocessing as mp
 
 from src import mappable_positions
@@ -29,6 +30,40 @@ def extract(args):
     pool.close()
     pool.join()
 
+def PSD(args):
+    dir_in = pathlib2.Path(args.dir_in)
+    dir_search = dir_in / 'tmp'
+
+    pattern = "*.cov"
+    if args.pattern:
+        pattern = '*' + args.pattern + pattern
+
+    f_list = sorted(dir_search.glob(pattern))
+    samples = [f.name.split('.chr')[0] for f in f_list]
+    samples = set(samples)
+    print(samples)
+
+    pool = mp.Pool(processes=args.n_procs)
+
+    for sample in samples:
+        # _build_and_save(dir_in, sample=sample)
+        fname = sample + ".chroms.spec"
+        fout = dir_in / fname
+
+        p = pool.apply_async(_build_and_save, (dir_search, sample, fout))
+        # p.get()
+        # pool.apply_async(_build_and_save, args=(dir_in), kwds={'sample': sample})
+
+    pool.close()
+    pool.join()
+
+def _build_and_save(dir_in, sample, fout):
+    # fname = sample + ".chroms.spec"
+    # fout = dir_in / fname
+
+    psd = PSDTools.SamplePSD.build_from_dir(str(dir_in), sample=sample)
+    psd.save(str(fout))
+
 def parse_args():
     parser = {}
     parser['argparse'] = argparse.ArgumentParser(description='MDAqc: tools for MDA quality control checks')
@@ -44,7 +79,11 @@ def parse_args():
     parser['extract'].set_defaults(func=extract)
 
     parser['PSD'] = parser['subparse'].add_parser('PSD', help='Estimate power spectral densities from coverage files')
-    parser['extract'].add_argument('-d', '--dir_in', default=None, help='directory in which to search for coverage files')
+    parser['PSD'].add_argument('-d', '--dir_in', default=None, help='directory in which to search for coverage files')
+    parser['PSD'].add_argument('-n', '--n_procs', default=1, type=int, help='number of cores to use')
+    parser['PSD'].add_argument('-p', '--pattern', default=None, help='pattern to match when finding samples')
+    parser['PSD'].set_defaults(func=PSD)
+
     return parser['argparse'].parse_args()
 
 if __name__ == "__main__":
