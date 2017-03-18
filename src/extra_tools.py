@@ -1,3 +1,9 @@
+# PSDTools.py - classes for MDAqc Power Spectral Density calculations
+#
+# v 0.0.6
+# rev 2017-03-18 (MS: Added documentation)
+# Notes:
+
 import pandas as pd
 import numpy as np
 import astropy.stats
@@ -11,6 +17,14 @@ import scipy.cluster.hierarchy as hc
 from . import PSDTools
 
 def chroms_from_build(build):
+    """ Get list of chromosomes from a particular genome build
+
+        Args:
+            build           str
+
+        Returns:
+            chrom_list      list
+    """
     chroms = {'grch37': [i for i in range(1, 23)] + ['X', 'Y'],
     }
 
@@ -19,15 +33,14 @@ def chroms_from_build(build):
     except KeyError:
         raise ValueError("Oops, I don't recognize the build {}".format(build))
 
-# def symmetric_KL(psd_1, psd_2):
-#     """ Calculate the approximate symmetric KL divergence between to power spectra
-#     """
-#     KL = (psd_1 / psd_2 + psd_2 / psd_1 - 2).sum()
-# 
-#     return KL
-
 def plot_KL_div_by_chrom(j):
     """ Plot KL divergence by chrom for grch37 sample
+
+        Args:
+            j       pandas series       KL divergence of each chromosome
+
+        Returns:
+            f       matplotlib figure
     """
     f = plt.figure()
     ax = f.add_subplot(111)
@@ -40,13 +53,6 @@ def plot_KL_div_by_chrom(j):
     chroms = [int(c) for c in chroms]
     chroms = pd.Series(chroms)
 
-    # mask = (j <= (mu+mad))
-    # print(mask)
-    # print(len(chroms[(j <= (mu+mad)).tolist()]))
-    # print(len(j[j <= (mu+mad)]))
-
-    # return chroms
-
     ax.plot(chroms[(j <= (mu+mad)).tolist()], j[j <= (mu+mad)], 'o', label='Consistent')
     ax.plot(chroms[(j > (mu+mad)).tolist()], j[j > (mu+mad)], 'o', label='Abberant', color='red')
     ax.plot(sorted(chroms), [mu+mad for i in range(len(chroms))], '--', label='MAD cutoff')
@@ -55,7 +61,6 @@ def plot_KL_div_by_chrom(j):
     ax.set_ylabel('Symmetric KL Divergence')
 
     chroms = sorted(chroms)
-    # chroms = chroms.tolist()
     ax.xaxis.set_ticks(chroms)
     chroms[-2:] = ['X', 'Y']
     ax.xaxis.set_ticklabels(chroms)
@@ -65,6 +70,14 @@ def plot_KL_div_by_chrom(j):
 def PSD_to_ACF(freq, psd, lags):
     """ Convert PSD to ACF using the Wiener-Khinchin theorem.
         Approximates the integral using the right rectangle rule
+
+        Args:
+            freq        1d array        array of frequencies
+            psd         1d array        PSD values at specified frequencies
+            lags        1d array        array of lags at which to calcualte ACF
+
+        Returns:
+            acf         1d array        ACF at specified lags
     """
     freq_sym = np.append(-freq[::-1], freq) 
     psd_sym = np.append(psd[::-1], psd)
@@ -82,6 +95,14 @@ def PSD_to_ACF(freq, psd, lags):
 def mk_ndarray(dir_in):
     """ Load PSD dataframes from a directory, calculate each sample's average
         and form into an ND array for clustering.
+
+        Args:
+            dir_in      str         input directory
+
+        Returns:
+            freq        1d array    frequencies of PSDs
+            nd          nd array    array of PSDs
+            sample_list list        names of samples
     """
     p = pathlib2.Path("tmp/multisample/")
     file_list = sorted(p.glob("*chroms.spec"))
@@ -99,6 +120,10 @@ def mk_ndarray(dir_in):
 def PSD_sym_KL(u, v):
     """ Calculate the symmetric KL divergence between two spectral densities
         j = sum( u / v + v / u - 2)
+
+        Args:
+            u       1d array        PSD array
+            v       1d array        PSD array
     """
     n = len(v)
     j = (1 / n) * (u / v + v / u - 2).sum()
@@ -107,6 +132,15 @@ def PSD_sym_KL(u, v):
 
 def hclust(nd, method='ward'):
     """ Perform heirarchical clustering of PSDs using the symmetric KL divergence
+
+        Args:
+            nd          nd array    array of PSDs
+
+        Kwargs
+            method      str         clustering method
+
+        Returns:
+            link        nd array    array of linkage relationships
     """
     dist = hc.distance.pdist(nd, PSD_sym_KL)
     link = hc.linkage(dist, method)
@@ -116,11 +150,15 @@ def hclust(nd, method='ward'):
 def mk_categorical_spectra(nd, labels):
     """ Construct categorical spectra from an nd array of average spectra and a list of labels
         labels should be of the form ['good', 'good', 'bad', ...]
+
+        Args:
+            nd      nd array    array of PSDs
+            labels  list        list of labels, one for each PSD
+
+        Returns:
+            --      dataframe   dataframe of categorical spectra with one column for each label
     """
     labels_uniq = set(labels)
-
-    # if len(labels_uniq) != 2:
-    #     raise ValueError("You didn't provide the right number of labels. Only two classes are allowed!")
 
     d = dict.fromkeys(labels_uniq)
 
@@ -131,11 +169,19 @@ def mk_categorical_spectra(nd, labels):
     return pd.DataFrame(d)
 
 def classify_samples(nd, sample_list, cat_spec):
-    order = []
+    """ Classify new samples as belonging to a catergory based on distance to categorical spectra
+
+        Args:
+            nd          nd array        array of PSDs
+            sample_list list            sample names
+            cat_spec    dataframe       categorical spectra
+
+        Returns:
+            --          dataframe       sample  category    prob cat 1  prob cat 2 ... prob cat n
+    """
     tmp = []
 
     for key in cat_spec:
-        # order.append(spec)
         tmp.append([PSD_sym_KL(psd, cat_spec[key]) for psd in nd])
 
     KL = np.array(tmp).T

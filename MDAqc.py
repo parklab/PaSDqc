@@ -1,3 +1,10 @@
+#!/usr/bin/env python
+
+# MDAqc.py - top level executible for MDAqc package
+#
+# v 0.0.6
+# rev 2017-03-18 (MS: Added documentation)
+# Notes:
 
 import os
 import argparse
@@ -9,6 +16,8 @@ from src import PSDTools
 from src import extra_tools
 
 def extract(args):
+    """ Extract coverage at uniquely mappable positions in a bam file
+    """
     out_dir = os.path.join(args.out_dir, 'tmp')
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
@@ -31,6 +40,8 @@ def extract(args):
     pool.join()
 
 def PSD(args):
+    """ Calculate power spectral densities from a directory of coverage files
+    """
     dir_in = pathlib2.Path(args.dir_in)
     dir_search = dir_in / 'tmp'
 
@@ -58,8 +69,8 @@ def PSD(args):
     pool.join()
 
 def _build_and_save(dir_in, sample, fout):
-    # fname = sample + ".chroms.spec"
-    # fout = dir_in / fname
+    """ Wrapper to build and save SamplePSD objects
+    """
 
     psd = PSDTools.SamplePSD.build_from_dir(str(dir_in), sample=sample)
     psd.save(str(fout))
