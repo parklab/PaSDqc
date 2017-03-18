@@ -100,7 +100,8 @@ def PSD_sym_KL(u, v):
     """ Calculate the symmetric KL divergence between two spectral densities
         j = sum( u / v + v / u - 2)
     """
-    j = (u / v + v / u - 2).sum()
+    n = len(v)
+    j = (1 / n) * (u / v + v / u - 2).sum()
 
     return j
 

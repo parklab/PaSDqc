@@ -268,6 +268,7 @@ class SamplePSD(object):
         kl_back = (1 / self.df).multiply(avg, 'index')
 
         j = (kl_for + kl_back - 2).sum(axis='index')
+        j *= 1 / len(avg)
 
         return j
 
