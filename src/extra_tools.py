@@ -1,7 +1,7 @@
 # PSDTools.py - classes for MDAqc Power Spectral Density calculations
 #
-# v 0.0.6
-# rev 2017-03-18 (MS: Added documentation)
+# v 0.0.7
+# rev 2017-03-19 (MS: summarize chrom KL divergences)
 # Notes:
 
 import pandas as pd
@@ -33,6 +33,28 @@ def chroms_from_build(build):
     except KeyError:
         raise ValueError("Oops, I don't recognize the build {}".format(build))
 
+def summarize_KL_div_by_chrom(j_list, sample_list):
+    chrom_pass = []
+    chrom_warn = []
+    chrom_fail = []
+
+    for j, sample in zip(j_list, sample_list):
+        mu = j.median()
+        mad = np.median(np.abs(j - mu))
+        sd_1 = mu + mad
+        sd_2 = mu + 2*mad
+
+        chrom_pass.append(j[j <= sd_1].index.tolist())
+        chrom_warn.append(j[(j > sd_1) & (j <= sd_2)].index.tolist())
+        chrom_fail.append(j[j > sd_2].index.tolist())
+
+    cols = ['Chrom: pass', 'Chrom: warn', 'Chrom: fail']
+
+    df = pd.DataFrame.from_items(zip(cols, [chrom_pass, chrom_warn, chrom_fail]))
+    df.index = sample_list
+
+    return df
+
 def plot_KL_div_by_chrom(j):
     """ Plot KL divergence by chrom for grch37 sample
 
@@ -47,15 +69,19 @@ def plot_KL_div_by_chrom(j):
 
     mu = j.median()
     mad = np.median(np.abs(j - mu))
+    sd_1 = mu + mad
+    sd_2 = mu + 2 * mad
 
     chroms = j.index.tolist()
     chroms[-2:] = ['23', '24']
     chroms = [int(c) for c in chroms]
     chroms = pd.Series(chroms)
 
-    ax.plot(chroms[(j <= (mu+mad)).tolist()], j[j <= (mu+mad)], 'o', label='Consistent')
-    ax.plot(chroms[(j > (mu+mad)).tolist()], j[j > (mu+mad)], 'o', label='Abberant', color='red')
-    ax.plot(sorted(chroms), [mu+mad for i in range(len(chroms))], '--', label='MAD cutoff')
+    ax.plot(chroms[(j <= (sd_1)).tolist()], j[j <= (sd_1)], 'o', label='Pass')
+    ax.plot(chroms[((j > sd_1) & (j <= sd_2)).tolist()], j[(j > sd_1) & (j <= sd_2)], 'o', label='Warn', color='orange')
+    ax.plot(chroms[(j > (sd_2)).tolist()], j[j > (sd_2)], 'o', label='Fail', color='red')
+    ax.plot(sorted(chroms), [sd_1 for i in range(len(chroms))], '--', label='one std')
+    ax.plot(sorted(chroms), [sd_2 for i in range(len(chroms))], '--', label='two std')
     ax.legend(loc='upper left')
     ax.set_xlabel('chromosome')
     ax.set_ylabel('Symmetric KL Divergence')
@@ -104,9 +130,9 @@ def mk_ndarray(dir_in):
             nd          nd array    array of PSDs
             sample_list list        names of samples
     """
-    p = pathlib2.Path("tmp/multisample/")
+    p = pathlib2.Path(dir_in)
     file_list = sorted(p.glob("*chroms.spec"))
-    sample_list = [f.name.split('.')[0] for f in file_list]
+    sample_list = [f.name.split('.chroms.spec')[0] for f in file_list]
 
     df_list = [pd.read_table(str(f), index_col=0) for f in file_list]
     psd_list = [PSDTools.SamplePSD(df, s) for df, s in zip(df_list, sample_list)]
@@ -147,7 +173,7 @@ def hclust(nd, method='ward'):
 
     return link
 
-def mk_categorical_spectra(nd, labels):
+def mk_categorical_spectra(freq, nd, labels):
     """ Construct categorical spectra from an nd array of average spectra and a list of labels
         labels should be of the form ['good', 'good', 'bad', ...]
 
@@ -166,7 +192,7 @@ def mk_categorical_spectra(nd, labels):
         mask = np.array([label == l for l in labels])
         d[label] = np.median(nd[mask, :], axis=0)
 
-    return pd.DataFrame(d)
+    return pd.DataFrame(d, index=freq)
 
 def classify_samples(nd, sample_list, cat_spec):
     """ Classify new samples as belonging to a catergory based on distance to categorical spectra
@@ -194,7 +220,7 @@ def classify_samples(nd, sample_list, cat_spec):
     row_masks = np.array([row == row.max() for row in prob])
     cats = [cat_spec.columns[mask][0] for mask in row_masks]
 
-    items = [('label', cats)] + [(lab, p) for lab, p in zip(cat_spec.columns, prob.T)]
+    items = [('label', cats)] + [('P({})'.format(lab), p) for lab, p in zip(cat_spec.columns, prob.T)]
     df = pd.DataFrame.from_items(items)
     df.index = sample_list
 

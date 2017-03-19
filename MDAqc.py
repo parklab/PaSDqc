@@ -2,18 +2,22 @@
 
 # MDAqc.py - top level executible for MDAqc package
 #
-# v 0.0.6
-# rev 2017-03-18 (MS: Added documentation)
+# v 0.0.7
+# rev 2017-03-19 (MS: report function creates html report)
 # Notes:
 
 import os
 import argparse
 import pathlib2
+import pandas as pd
+import numpy as np
 import multiprocessing as mp
 
 from src import mappable_positions
 from src import PSDTools
 from src import extra_tools
+from src import plotly_tools
+from src import report_writer
 
 def extract(args):
     """ Extract coverage at uniquely mappable positions in a bam file
@@ -75,6 +79,36 @@ def _build_and_save(dir_in, sample, fout):
     psd = PSDTools.SamplePSD.build_from_dir(str(dir_in), sample=sample)
     psd.save(str(fout))
 
+def report(args):
+    p = pathlib2.Path(args.dir_in)
+    file_list = sorted(p.glob('*.chroms.spec'))
+
+    # Chrom warnings
+    sample_list = [f.name.split('.chroms.spec')[0] for f in file_list]
+    df_list = [pd.read_table(str(f), index_col=0) for f in file_list]
+    psd_list = [PSDTools.SamplePSD(df, name=s) for df, s in zip(df_list, sample_list)]
+    j_list = [psd.KL_div_by_chrom() for psd in psd_list]
+    df_chrom = extra_tools.summarize_KL_div_by_chrom(j_list, sample_list)
+
+    # Categorization
+    avg_list = [psd.avg_PSD() for psd in psd_list]
+    nd = np.array(avg_list)
+    freq = np.array(df_list[0].index.tolist())
+    cat_spec = pd.read_table(args.cat_spec, index_col=0)
+    df_clust = extra_tools.classify_samples(nd, sample_list, cat_spec)
+
+    # Cluster plot
+    div_dend = plotly_tools.dendrogram(nd, sample_list)
+
+    # PSD plot
+    div_psd = plotly_tools.PSD_plot(freq, nd, sample_list)
+
+    # Report generation
+    df = df_clust.join(df_chrom)
+    fout = args.out_name + '.html'
+    
+    report_writer.writer(df, div_dend, div_psd, fout)
+
 def parse_args():
     parser = {}
     parser['argparse'] = argparse.ArgumentParser(description='MDAqc: tools for MDA quality control checks')
@@ -94,6 +128,12 @@ def parse_args():
     parser['PSD'].add_argument('-n', '--n_procs', default=1, type=int, help='number of cores to use')
     parser['PSD'].add_argument('-p', '--pattern', default=None, help='pattern to match when finding samples')
     parser['PSD'].set_defaults(func=PSD)
+
+    parser['report'] = parser['subparse'].add_parser('report', help='Generate HTML report of MDA sample quality')
+    parser['report'].add_argument('-d', '--dir_in', required=True,  default=None, help='directory in which to search for sample PSD files')
+    parser['report'].add_argument('-c', '--cat_spec', default='db/categorical_spectra_1x.txt', help='path to file of categorical spectra')
+    parser['report'].add_argument('-o', '--out_name', default='MDAqc_report', help='file name for html report')
+    parser['report'].set_defaults(func=report)
 
     return parser['argparse'].parse_args()
 
