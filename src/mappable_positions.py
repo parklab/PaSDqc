@@ -1,3 +1,9 @@
+# mappable_positions.py - methods to extract coverage from bam files
+#
+# v 0.0.8
+# rev 2017-03-21 (MS: removal of pos files after cov extraction)
+# Notes:
+
 import pathlib2
 import pandas as pd
 import numpy as np
@@ -75,7 +81,7 @@ def uniq_pos_by_chrm(bam_file, chrom, out_file, map_qual=30, build='hg19'):
     exec_cmd(cmd)
     # exec_cmd(cmd, verbose=True)
 
-def depth_at_pos(bam_file, pos_file, chrom, out_file, map_qual=30):
+def depth_at_pos(bam_file, pos_file, chrom, out_file, map_qual=30, clean=True):
     """ Extract depth at positions specified in a file.
     """
     kwargs = {'bam_file': bam_file, 
@@ -87,10 +93,13 @@ def depth_at_pos(bam_file, pos_file, chrom, out_file, map_qual=30):
 
     cmd = "samtools view -uh -q {map_qual} {bam_file} {chrom} | samtools depth -b {pos_file} - > {out_file}".format(**kwargs)
 
+    if clean:
+        cmd += "; rm {}".format(pos_file)
+
     exec_cmd(cmd)
     # exec_cmd(cmd, verbose=True)
 
-def extract_coverage(bam_file, out_dir, chrom_list, build='hg19', map_qual=30):
+def extract_coverage(bam_file, out_dir, chrom_list, build='hg19', map_qual=30, clean=True):
     """ Efficiently extract coverage at uniquely mappable positions 
         occuring at the starts of reads in a chromosome specific manner
 
@@ -110,7 +119,7 @@ def extract_coverage(bam_file, out_dir, chrom_list, build='hg19', map_qual=30):
         cov_file = p_out / p_bam.with_suffix('.{}.map.pos.cov'.format(chrom_lab)).name
 
         uniq_pos_by_chrm(bam_file, chrom, pos_file, map_qual, build)
-        depth_at_pos(bam_file, pos_file, chrom, cov_file, map_qual)
+        depth_at_pos(bam_file, pos_file, chrom, cov_file, map_qual, clean)
 
 def to_hg19_format(chrom):
     try:

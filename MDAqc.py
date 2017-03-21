@@ -2,8 +2,8 @@
 
 # MDAqc.py - top level executible for MDAqc package
 #
-# v 0.0.7
-# rev 2017-03-19 (MS: report function creates html report)
+# v 0.0.8
+# rev 2017-03-21 (MS: ACF and chromosome plots added to html report)
 # Notes:
 
 import os
@@ -12,6 +12,7 @@ import pathlib2
 import pandas as pd
 import numpy as np
 import multiprocessing as mp
+import plotly.offline as py
 
 from src import mappable_positions
 from src import PSDTools
@@ -97,17 +98,32 @@ def report(args):
     cat_spec = pd.read_table(args.cat_spec, index_col=0)
     df_clust = extra_tools.classify_samples(nd, sample_list, cat_spec)
 
+    # ACF
+    lags = np.array([0, 1e2, 2e2, 3e2, 4e2, 5e2, 7e2, 8e2, 1e3, 5e3, 1e4, 2e4, 3e4, 5e4, 6e4, 7e4, 8e4, 9e4, 1e5, 2e5, 3e5, 4e5, 5e5, 6e5, 1e6])
+    nd_acf = np.array([extra_tools.PSD_to_ACF(freq, avg, lags) for avg in nd]) 
+    df_var = pd.DataFrame(nd_acf[:, 0], columns=['variance'], index=sample_list)
+
     # Cluster plot
-    div_dend = plotly_tools.dendrogram(nd, sample_list)
+    dend = plotly_tools.dendrogram(nd, sample_list)
+    div_dend = py.plot(dend, output_type='div')
 
     # PSD plot
-    div_psd = plotly_tools.PSD_plot(freq, nd, sample_list)
+    psd = plotly_tools.PSD_plot(freq, nd, sample_list)
+    div_psd = py.plot(psd, output_type='div')
+
+    # ACF plot
+    acf = plotly_tools.ACF_plot(lags, nd_acf, sample_list)
+    div_acf = py.plot(acf, output_type='div')
+
+    # Chrom plot
+    chrom = plotly_tools.chrom_KL_plot(j_list, sample_list)
+    div_chrom = py.plot(chrom, output_type='div')
 
     # Report generation
-    df = df_clust.join(df_chrom)
+    df = df_var.join(df_clust).join(df_chrom)
     fout = args.out_name + '.html'
     
-    report_writer.writer(df, div_dend, div_psd, fout)
+    report_writer.writer(df, div_dend, div_psd, div_acf, div_chrom, fout)
 
 def parse_args():
     parser = {}
