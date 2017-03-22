@@ -2,8 +2,8 @@
 
 # MDAqc.py - top level executible for MDAqc package
 #
-# v 0.0.8
-# rev 2017-03-21 (MS: ACF and chromosome plots added to html report)
+# v 0.0.9
+# rev 2017-03-22 (MS: Better report saving)
 # Notes:
 
 import os
@@ -121,9 +121,10 @@ def report(args):
 
     # Report generation
     df = df_var.join(df_clust).join(df_chrom)
-    fout = args.out_name + '.html'
+    fout_name = args.out_name + '.html'
+    fout = p / fout_name
     
-    report_writer.writer(df, div_dend, div_psd, div_acf, div_chrom, fout)
+    report_writer.writer(df, div_dend, div_psd, div_acf, div_chrom, str(fout))
 
 def parse_args():
     parser = {}

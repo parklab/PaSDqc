@@ -1,7 +1,7 @@
 # report_writer.py - methods for writing html report
 #
-# v 0.0.8
-# rev 2017-03-21 (MS: ACF and chrom plots included in report)
+# v 0.0.9
+# rev 2017-03-22 (MS: Report typo fix)
 # Notes:
 
 def writer(df, div_dend, div_psd, div_acf, div_chrom, fout):
@@ -30,7 +30,7 @@ def report_html(df_html, div_dend, div_psd, div_acf, div_chrom):
         ''' + div_dend + '''
         <h2>Chromosome Outlier Plots</h2>
         ''' + div_chrom + '''
-        <h2>Sample Periogograms</h2>
+        <h2>Sample Periodograms</h2>
         ''' + div_psd + '''
         <h2>Sample Autocorrelation</h2>
         ''' + div_acf + '''
