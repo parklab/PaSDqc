@@ -2,8 +2,8 @@
 
 # MDAqc.py - top level executible for MDAqc package
 #
-# v 0.0.12
-# rev 2017-03-23 (MS: Add gold standard spectra to dendrogram plot)
+# v 0.0.13
+# rev 2017-03-23 (MS: better psd saving)
 # Notes:
 
 import os
@@ -58,6 +58,10 @@ def PSD(args):
     dir_in = pathlib2.Path(args.dir)
     dir_search = dir_in / 'cov'
 
+    dir_out = dir_in / 'psd'
+    if dir_out.exists():
+        dir_out.mkdir()
+
     pattern = "*.cov"
     if args.pattern:
         pattern = '*' + args.pattern + pattern
@@ -72,7 +76,7 @@ def PSD(args):
     for sample in samples:
         # _build_and_save(dir_in, sample=sample)
         fname = sample + ".chroms.spec"
-        fout = dir_in / fname
+        fout = dir_out / fname
 
         # _build_and_save(dir_search, sample, args.clean, fout)
         p = pool.apply_async(_build_and_save, (dir_search, sample, args.clean, fout))
@@ -92,7 +96,8 @@ def _build_and_save(dir_in, sample, clean, fout):
 
 def report(args):
     p = pathlib2.Path(args.dir)
-    file_list = sorted(p.glob('*.chroms.spec'))
+    d_psd = p / 'psd'
+    file_list = sorted(d_psd.glob('*.chroms.spec'))
 
     # Chrom warnings
     sample_list = [f.name.split('.chroms.spec')[0] for f in file_list]
