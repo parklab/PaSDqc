@@ -36,18 +36,18 @@ MDAqc provides a simple command line tool to rapidly evaluate very low coverage 
 
 2. Long usage: `python MDAqc.py QC [OPTIONS]`
 
-Options:
-* -h        display help message and exit
-* -i        list of bam files to analyze `[bam1 [bam_2 ...]]`
-* -f        file containing paths to bam files to analyze (instead of -i, -d)
-* -d        directory to search for bam files to analyze (instead of -i, -f)
-* -o        output directory (will be created if it does not exist)
-* -c        categorical spectra file
-  * _NOTE_: if using generic spectra, be sure to specify the correct depth (see FAQ).
-* -n        number of threads to use
-* -b        Build {grch37, hg19}
-* -q        Mapping quality for read extraction
-* -r        name of html report
+   Options:
+   * -h        display help message and exit
+   * -i        list of bam files to analyze `[bam1 [bam_2 ...]]`
+   * -f        file containing paths to bam files to analyze (instead of -i, -d)
+   * -d        directory to search for bam files to analyze (instead of -i, -f)
+   * -o        output directory (will be created if it does not exist)
+   * -c        categorical spectra file
+     * _NOTE_: if using generic spectra, be sure to specify the correct depth (see FAQ).
+   * -n        number of threads to use
+   * -b        Build {grch37, hg19}
+   * -q        Mapping quality for read extraction
+   * -r        name of html report
 
 3. Even longer useage `python MDAqc.py -h`
 
