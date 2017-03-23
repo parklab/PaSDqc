@@ -1,7 +1,7 @@
 # PSDTools.py - classes for MDAqc Power Spectral Density calculations
 #
-# v 0.0.6
-# rev 2017-03-18 (MS: Added documentation)
+# v 0.0.10
+# rev 2017-03-23 (MS: Remove .cov files after generating PSDs)
 # Notes:
 
 import pandas as pd
@@ -12,6 +12,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import re
 import pathlib2
+import os
 
 class ChromPSD(object):
     """ Lombe-Scargle PSD estimation for a single Chromosome
@@ -219,7 +220,7 @@ class SamplePSD(object):
         self.df = df
 
     @classmethod
-    def build_from_dir(cls, d_path, sample=None):
+    def build_from_dir(cls, d_path, sample=None, clean=False):
         """ Build SamplePSD object from a directory of .cov files
 
             Args:
@@ -237,6 +238,9 @@ class SamplePSD(object):
         name = cls.name_from_file(file_list[0])
 
         df = cls._build_dataframe(file_list)
+
+        if clean:
+            [os.remove(str(f)) for f in file_list]
 
         # chrom_list = cls.chroms_from_files(file_list, build)
 
@@ -329,4 +333,5 @@ class SamplePSD(object):
             Args:
                 f_out   str     name of output file
         """
+        print(f_out)
         self.df.to_csv(f_out, sep="\t", header=True, index=True)

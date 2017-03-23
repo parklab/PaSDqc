@@ -1,7 +1,7 @@
 # plotly_tools.py - methods for easy plotly plot creation
 #
-# v 0.0.8
-# rev 2017-03-21 (MS: ACF and chrom plot methods)
+# v 0.0.10
+# rev 2017-03-23 (MS: only plot autosomes)
 # Notes:
 
 import numpy as np
@@ -88,13 +88,13 @@ def chrom_KL_plot(j_list, sample_list):
     j = j_list[0]
     chroms = j.index.tolist()
     text = [c for c in chroms]
-    chroms[-2:] = ['23', '24']
+    # chroms[-2:] = ['23', '24']
     chroms = pd.Series([int(c) for c in chroms], index=j.index)
     text = pd.Series(text, index=j.index)
 
     ticks = sorted(chroms)
     tick_labs = [t for t in ticks]
-    tick_labs[-2:] = ['X', 'Y']
+    # tick_labs[-2:] = ['X', 'Y']
     tick_labs = [str(c) for c in tick_labs]
 
     data = []

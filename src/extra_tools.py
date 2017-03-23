@@ -1,7 +1,7 @@
 # PSDTools.py - classes for MDAqc Power Spectral Density calculations
 #
-# v 0.0.7
-# rev 2017-03-19 (MS: summarize chrom KL divergences)
+# v 0.0.10
+# rev 2017-03-23 (MS: now only analyzing autosomes)
 # Notes:
 
 import pandas as pd
@@ -25,7 +25,8 @@ def chroms_from_build(build):
         Returns:
             chrom_list      list
     """
-    chroms = {'grch37': [i for i in range(1, 23)] + ['X', 'Y'],
+    chroms = {'grch37': [i for i in range(1, 23)],
+    # chroms = {'grch37': [i for i in range(1, 23)] + ['X', 'Y'],
     }
 
     try:
