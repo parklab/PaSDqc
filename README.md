@@ -1,4 +1,4 @@
-# MDAqc`
+# MDAqc
 Comprehensive evaluation of single cell MDA library quality.
 
 ## Purpose
@@ -30,8 +30,10 @@ MDAqc provides a simple command line tool to rapidly evaluate very low coverage 
 
 ## Usage
 0. Preprocessing bam files: MDAqc requires indexed BAM files aligned to either the GrCh37 or hg19 reference genomes as input. To ensure consistency across samples, we recommend sequencing (or downsampling) all libraries to either 1x or 0.1x prior to running MDAqc.
+
 1. Quick usage: `python MDAqc.py QC -d <dir/of/bams> -o <my/output/dir> -c db/categorical_spectra_[XX].txt`
    * `db/categorical_spectra_[XX].txt` is the gold-standard spectra corresponding to the depth of your samples (see FAQ for more)
+
 2. Long usage: `python MDAqc.py QC [OPTIONS]`
 
 Options:
@@ -73,13 +75,13 @@ Options:
 
 3. *Can I define my own gold-standard spectra?*
 
-  Yes! MDAqc is also a python library. It includes a method to generate new gold standard spectra using previously analyzed samples. Within the MDAqc dir, start python
+   Yes! MDAqc is also a python library. It includes a method to generate new gold standard spectra using previously analyzed samples. Within the MDAqc dir, start python
    ```
    >>> from src import extra_tools
    >>> freq, nd, sample_list = extra_tools.mk_ndarray("/path/to/analysis/dir")
    >>> cat_spec = extra_tools.mk_categorical_spectra(freq, nd, labels)
    ```
-where `labels` is a list of the form `['good', 'good', 'bad', ...]` corresponding to user-assigned classifications to each sample in `sample_list`. Then save the `cat_spec` to a file. Tell MDAqc to use this new file using the `c` option the next time you run the program.
+   where `labels` is a list of the form `['good', 'good', 'bad', ...]` corresponding to user-assigned classifications to each sample in `sample_list`. Then save the `cat_spec` to a file. Tell MDAqc to use this new file using the `c` option the next time you run the program.
 
 4. *I deleted the html report. Do I have to rerun the whole pipeline?*
 
