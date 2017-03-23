@@ -1,7 +1,7 @@
 # plotly_tools.py - methods for easy plotly plot creation
 #
-# v 0.0.10
-# rev 2017-03-23 (MS: only plot autosomes)
+# v 0.0.12
+# rev 2017-03-23 (MS: gold standard spectra included in dendrogram)
 # Notes:
 
 import numpy as np
@@ -13,8 +13,16 @@ import plotly.figure_factory as ff
 
 from . import extra_tools
 
-def dendrogram(nd, sample_list):
- 
+def dendrogram(nd, sample_list, f_cat_spec):
+
+    # load categorical spectra
+    cat_spec = pd.read_table(f_cat_spec, index_col=0)
+    nd_spec = cat_spec.as_matrix().T
+    sample_spec = ['GOLD-{}'.format(c).upper() for c in cat_spec.columns.tolist()]
+
+    nd = np.vstack((nd, nd_spec))
+    sample_list.extend(sample_spec)
+
     def _PSD_dist(nd):
         return hc.distance.pdist(nd, extra_tools.PSD_sym_KL)
 

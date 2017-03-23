@@ -81,7 +81,7 @@ MDAqc provides a simple command line tool to rapidly evaluate very low coverage 
    >>> freq, nd, sample_list = extra_tools.mk_ndarray("/path/to/analysis/dir")
    >>> cat_spec = extra_tools.mk_categorical_spectra(freq, nd, labels)
    ```
-   where `labels` is a list of the form `['good', 'good', 'bad', ...]` corresponding to user-assigned classifications to each sample in `sample_list`. Then save the `cat_spec` to a file. Tell MDAqc to use this new file using the `c` option the next time you run the program.
+   where `labels` is a list of the form `['good', 'good', 'bad', ...]` corresponding to user-assigned classifications to each sample in `sample_list`. Then save the `cat_spec` to a file. Tell MDAqc to use this new file using the `-c` option the next time you run the program.
 
 4. *I deleted the html report. Do I have to rerun the whole pipeline?*
 
@@ -92,3 +92,8 @@ MDAqc provides a simple command line tool to rapidly evaluate very low coverage 
 5. *I want to use MDAqc to analyze the quality of samples aligned to a different genome build. Is this possible*
 
    Yes, but you'll need to a bed file of uniquely mappable positions for the genome. Contact us for help with this.
+
+## Support
+__Maxwell Sherman__: maxwell\_sherman {at} hms.harvard.edu
+
+__Peter Park__: peter\_park {at} hms.harvard.edu

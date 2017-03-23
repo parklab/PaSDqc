@@ -2,8 +2,8 @@
 
 # MDAqc.py - top level executible for MDAqc package
 #
-# v 0.0.10
-# rev 2017-03-23 (MS: QC fn to run all MDAqc analysis steps)
+# v 0.0.12
+# rev 2017-03-23 (MS: Add gold standard spectra to dendrogram plot)
 # Notes:
 
 import os
@@ -114,7 +114,7 @@ def report(args):
     df_var = pd.DataFrame(nd_acf[:, 0], columns=['variance'], index=sample_list)
 
     # Cluster plot
-    dend = plotly_tools.dendrogram(nd, sample_list)
+    dend = plotly_tools.dendrogram(nd, sample_list, args.cat_spec)
     div_dend = py.plot(dend, output_type='div')
 
     # PSD plot
