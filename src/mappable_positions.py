@@ -18,23 +18,6 @@ def exec_cmd(cmd, verbose=True):
 
     p = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE).stdout.read()
 
-# def bed_to_pos(bed, f_out):
-#     """ Convert bed file with regions to bed file specifiying individual positions
-#         contained in those regions
-# 
-#         Args:
-#             bed     bed file
-#     """
-#     f = open(f_out, 'w')
-# 
-#     for line in bed:
-#         chrm = line[0]
-#         start = int(line[1])
-#         end = int(line[2])
-# 
-#         for i in range(start, end):
-#             f.write("{}\t{}\t{}\n".format(chrm, i, i+1))
-
 def map_to_bed(f_map, dir_out, build='grch37'):
     """ Split a file listing unique regions across genome into bed files per chrom
         assumes columns are chrom   start   end ...
@@ -142,12 +125,6 @@ def to_grch_format(chrom):
     return chrom
 
 def lookup_map_file(build, chrom):
-    # try:
-    #     if not chrom.startswith('chr'):
-    #         chrom = 'chr{}'.format(chrom)
-
-    # except AttributeError:
-    #     chrom = 'chr{}'.format(chrom)
 
     chrom = to_hg19_format(chrom)
 

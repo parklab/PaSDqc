@@ -103,7 +103,7 @@ MDAqc provides a simple command line tool to rapidly evaluate very low coverage 
 
    Rest easy, none of your plots are uploaded to the internet. We use the plotly javascript API to embed the plots directly into the html report. This means that a report is entirely self-contained, so you can send it around to collaborators without fear of plots not loading. It also means that the reports can be fairly large (several MBs), as the data required to generate the plots must also be embedded in the html file.
 
-5. *I want to use MDAqc to analyze the quality of samples aligned to a different genome build. Is this possible*
+7. *I want to use MDAqc to analyze the quality of samples aligned to a different genome build. Is this possible*
 
    Yes, but you'll need to a bed file of uniquely mappable positions for the genome. Contact us for help with this.
 
