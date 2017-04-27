@@ -1,7 +1,7 @@
 # PSDTools.py - classes for MDAqc Power Spectral Density calculations
 #
-# v 0.0.10
-# rev 2017-03-23 (MS: now only analyzing autosomes)
+# v 0.0.16
+# rev 2017-04-27 (MS: Better integral approx for estimating ACF)
 # Notes:
 
 import pandas as pd
@@ -13,6 +13,7 @@ import seaborn as sns
 import re
 import pathlib2
 import scipy.cluster.hierarchy as hc
+import scipy.integrate
 
 from . import PSDTools
 
@@ -112,11 +113,16 @@ def PSD_to_ACF(freq, psd, lags):
     steps = freq_sym[1:] - freq_sym[:-1]
     height = psd_sym[1:]
 
-    nd = np.tile(freq_sym[1:], (len(lags), 1)).T
+    # nd = np.tile(freq_sym[1:], (len(lags), 1)).T
+    nd = np.tile(freq_sym, (len(lags), 1)).T
 
-    acf = np.cos(-2*np.pi*nd*lags)*(height*steps)[:, np.newaxis]
-    acf = acf.sum(axis=0)
+    # acf = np.cos(-2*np.pi*nd*lags)*(height*steps)[:, np.newaxis]
+    # acf = acf.sum(axis=0)
 
+    acf = scipy.integrate.simps(np.cos(-2*np.pi*nd*lags)*psd_sym[:, np.newaxis], freq_sym, axis=0)
+
+    # for l in lags:
+    #     ac = scipy.integrate.simps(np.cos(-2*np*pi*freq_sym*l) * psd_sym, freq_sym)
     return acf
 
 def mk_ndarray(dir_in):

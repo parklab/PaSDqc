@@ -2,8 +2,8 @@
 
 # MDAqc.py - top level executible for MDAqc package
 #
-# v 0.0.13
-# rev 2017-03-23 (MS: better psd saving)
+# v 0.0.16
+# rev 2017-04-27 (MS: fixed path bugs)
 # Notes:
 
 import os
@@ -37,7 +37,7 @@ def extract(args):
 
     # Search a dir for bams if necessary
     elif args.dir_in:
-        p = pathlib.Path(args.dir_in)
+        p = pathlib2.Path(args.dir_in)
         file_list = sorted(p.glob("*.bam"))
         args.in_file = [str(f) for f in file_list]
 
@@ -59,7 +59,7 @@ def PSD(args):
     dir_search = dir_in / 'cov'
 
     dir_out = dir_in / 'psd'
-    if dir_out.exists():
+    if not dir_out.exists():
         dir_out.mkdir()
 
     pattern = "*.cov"
