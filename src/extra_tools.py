@@ -1,8 +1,8 @@
 # PSDTools.py - classes for MDAqc Power Spectral Density calculations
 #
-# v 0.0.16
-# rev 2017-04-27 (MS: Better integral approx for estimating ACF)
-# Notes:
+# v 0.1.1
+# rev 2017-07-14 (MS: Direct calculation of ACF from coverage data)
+# Notes: WARNING: This method is memory intensive
 
 import pandas as pd
 import numpy as np
@@ -14,6 +14,7 @@ import re
 import pathlib2
 import scipy.cluster.hierarchy as hc
 import scipy.integrate
+import sys
 
 from . import PSDTools
 
@@ -232,3 +233,46 @@ def classify_samples(nd, sample_list, cat_spec):
     df.index = sample_list
 
     return df
+
+def ACF_brute(df_cov, lag):
+    """ Brute force calculate the ACF from coverage data
+
+        Args:
+            df_cov: a dataframe of coverage data
+            lag:    the lag for which to calculate the ACF
+    """
+    # Assign columns and index
+    df_cov.columns = ['chrom', 'pos', 'depth']
+    df_cov.index = df_cov.pos
+
+    # Normalize the depth
+    df_cov.depth = df_cov.depth / df_cov.depth.mean()
+
+    # Brute force find the positons that are $lag distance apart
+    df_lag = df_cov.loc[df_cov.pos+lag, :].dropna()
+    df_start = df_cov.loc[df_lag.pos-lag, :]
+
+    # Calc ACF
+    n = len(df_lag)
+    mu_lag = df_lag.depth.mean()
+    mu_start = df_start.depth.mean()
+
+    ACF = (1. / n) * ((df_lag.depth - mu_lag) * (df_start.depth - mu_start)).sum()
+
+    return ACF
+
+if __name__ == "__main__":
+    f = sys.argv[1]
+    df_cov = pd.read_table(f, header=None)
+
+    a1 = np.arange(0, 1000, 100)
+    a2 = np.arange(1000, 10000, 1000)
+    a3 = np.arange(10000, 100000, 10000)
+    a4 = np.arange(100000, 1000000, 100000)
+    a5 = np.array([1000000])
+    lags = np.concatenate([a1, a2, a3, a4, a5])
+
+    acf = [ACF_brute(df_cov, lag) for lag in lags]
+    df_acf = pd.DataFrame({'ACF': acf}, index=lags)
+    f_out = f.replace('.cov', '.acf')
+    df_acf.to_csv(f_out, sep="\t")
