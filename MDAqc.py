@@ -2,9 +2,9 @@
 
 # MDAqc.py - top level executible for MDAqc package
 #
-# v 0.0.16
-# rev 2017-04-27 (MS: fixed path bugs)
-# Notes:
+# v 0.1.0
+# rev 2017-07-14 (MS: Added amplicon distribution inference to report)
+# Notes: Also some bug fixes
 
 import os
 import argparse
@@ -17,6 +17,7 @@ import plotly.offline as py
 from src import mappable_positions
 from src import PSDTools
 from src import extra_tools
+from src import amplicon
 from src import plotly_tools
 from src import report_writer
 
@@ -37,8 +38,14 @@ def extract(args):
 
     # Search a dir for bams if necessary
     elif args.dir_in:
+        pattern = "*.bam"
+
+        if args.pattern:
+            pattern = "*" + args.pattern + pattern
+
         p = pathlib2.Path(args.dir_in)
-        file_list = sorted(p.glob("*.bam"))
+        file_list = sorted(p.glob(pattern))
+        # file_list = sorted(p.glob("*.bam"))
         args.in_file = [str(f) for f in file_list]
 
     chrom_list = extra_tools.chroms_from_build(args.build)
@@ -99,6 +106,10 @@ def report(args):
     d_psd = p / 'psd'
     file_list = sorted(d_psd.glob('*.chroms.spec'))
 
+    d_data = p / 'data'
+    if not d_data.is_dir():
+        d_data.mkdir()
+
     # Chrom warnings
     sample_list = [f.name.split('.chroms.spec')[0] for f in file_list]
     df_list = [pd.read_table(str(f), index_col=0) for f in file_list]
@@ -113,6 +124,19 @@ def report(args):
     cat_spec = pd.read_table(args.cat_spec, index_col=0)
     df_clust = extra_tools.classify_samples(nd, sample_list, cat_spec)
 
+    # Amplicon size distribution
+    amplicon_list = [amplicon.AmplDist(freq, avg) for avg in nd]
+    [amp.fit_curve(bulk=args.bulk, method='erf') for amp in amplicon_list]
+    # amplicon_list = [amplicon.PSDLogis(freq, avg) for avg in nd]
+    # [amp.fit_logistic(bulk=args.bulk) for amp in amplicon_list]
+    size_ranges = [amp.amplicon_range() for amp in amplicon_list]
+    pdf_list = [amp.amplicon_dist() for amp in amplicon_list]
+    # pdf_list = [amp.logistic_dist() for amp in amplicon_list]
+    df_amp = pd.DataFrame(np.array(size_ranges).astype(int), columns=['amplicon median size', 'amplicon mean size', 'amplicon lower size', 'amplicon upper size'], index=sample_list)
+    param_names = amplicon_list[0].param_names('erf')
+    df_fit = pd.DataFrame(np.array([amp.popt['erf'] for amp in amplicon_list]), columns=param_names, index=sample_list)
+    # df_fit = pd.DataFrame(np.array([[amp.inter, amp.asym, amp.xmid, amp.scal] for amp in amplicon_list]), columns=['intercept', 'asymptote', 'xmid', 'scale'], index=sample_list)
+
     # ACF
     lags = np.array([0, 1e2, 2e2, 3e2, 4e2, 5e2, 7e2, 8e2, 1e3, 5e3, 1e4, 2e4, 3e4, 5e4, 6e4, 7e4, 8e4, 9e4, 1e5, 2e5, 3e5, 4e5, 5e5, 6e5, 1e6])
     nd_acf = np.array([extra_tools.PSD_to_ACF(freq, avg, lags) for avg in nd]) 
@@ -123,8 +147,13 @@ def report(args):
     div_dend = py.plot(dend, output_type='div')
 
     # PSD plot
-    psd = plotly_tools.PSD_plot(freq, nd, sample_list)
+    psd = plotly_tools.PSD_plot(freq, nd, sample_list, bulk=args.bulk)
     div_psd = py.plot(psd, output_type='div')
+
+    # Amplicon dist plot
+    pdf = plotly_tools.amplicon_density_plot(amplicon_list, pdf_list, sample_list)
+    # pdf = plotly_tools.amplicon_density_plot(10**amplicon_list[0].freq['dist'], pdf_list, sample_list)
+    div_pdf = py.plot(pdf, output_type='div')
 
     # ACF plot
     acf = plotly_tools.ACF_plot(lags, nd_acf, sample_list)
@@ -135,11 +164,17 @@ def report(args):
     div_chrom = py.plot(chrom, output_type='div')
 
     # Report generation
-    df = df_var.join(df_clust).join(df_chrom)
+    df = df_var.join(df_clust).join(df_amp).join(df_chrom)
     fout_name = args.rep_name + '.html'
     fout = p / fout_name
     
-    report_writer.writer(df, div_dend, div_psd, div_acf, div_chrom, str(fout))
+    report_writer.writer(df, div_dend, div_psd, div_acf, div_chrom, div_pdf, str(fout))
+
+    fout_df = d_data / (args.rep_name + '.table.txt')
+    df.to_csv(str(fout_df), header=True, index=True, sep="\t")
+
+    fout_fit = d_data / (args.rep_name + '.fit.txt')
+    df_fit.to_csv(str(fout_fit), header=True, index=True, sep="\t")
 
 def QC(args):
     extract(args)
@@ -155,7 +190,8 @@ def parse_args():
     parser['extract'].add_argument('-i', '--in_file', default=None, nargs='+', help='input bam file(s)')
     parser['extract'].add_argument('-f', '--file_list', default=None, help='file of bam paths to use instead of -i')
     parser['extract'].add_argument('-d', '--dir_in', default=None, help='dir to search for bam files (instead of -i or -f)')
-    parser['extract'].add_argument('-o', '--out_dir', default='.', help='output directory')
+    parser['extract'].add_argument('-p', '--pattern', default=None, help='pattern to match when finding samples')
+    parser['extract'].add_argument('-o', '--dir', default='.', help='output directory')
     parser['extract'].add_argument('-n', '--n_procs', default=1, type=int, help='number of cores to use')
     parser['extract'].add_argument('-b', '--build', default='grch37', help='genome build')
     parser['extract'].add_argument('-q', '--map_qual', default=30, help='mapping quality threshold')
@@ -174,6 +210,7 @@ def parse_args():
     parser['report'].add_argument('-c', '--cat_spec', default='db/categorical_spectra_1x.txt', help='path to file of categorical spectra')
     parser['report'].add_argument('-o', '--rep_name', default='MDAqc_report', help='file name for html report')
     parser['report'].set_defaults(func=report)
+    parser['report'].add_argument('-u', '--bulk', default='db/bulk_1x.smooth3.spec', help='path to bulk spectrum')
 
     parser['QC'] = parser['subparse'].add_parser('QC', help='Run all MDAqc steps, starting with BAM files and ending with an html report')
     parser['QC'].add_argument('-i', '--in_file', default=None, nargs='+', help='input bam file(s)')
@@ -184,6 +221,7 @@ def parse_args():
     parser['QC'].add_argument('-b', '--build', default='grch37', choices=['grch37, hg19'], help='genome build')
     parser['QC'].add_argument('-q', '--map_qual', default=30, type=int, help='mapping quality threshold')
     parser['QC'].add_argument('-c', '--cat_spec', default='db/categorical_spectra_1x.txt', help='path to file of categorical spectra')
+    parser['QC'].add_argument('-u', '--bulk', default='db/bulk_1x.smooth3.spec', help='path to bulk spectrum')
     parser['QC'].add_argument('-r', '--rep_name', default='MDAqc_report', help='file name for html report')
     parser['QC'].add_argument('-p', '--pattern', default=None, help='pattern to match when finding samples')
     parser['QC'].add_argument('--noclean', dest='clean', action='store_false', default=True, help='Do not delete pos / cov files automatically')
