@@ -1,7 +1,7 @@
 # plotly_tools.py - methods for easy plotly plot creation
 #
-# v 0.1.0
-# rev 2017-07-14 (MS: amplicon size density plotting)
+# v 0.1.2
+# rev 2017-07-14 (MS: Better chrom outlier plotting)
 # Notes: Better PSD plotting
 
 import numpy as np
@@ -149,7 +149,12 @@ def chrom_KL_plot(j_list, sample_list):
         data.extend(d_tmp)
         s_list.extend(s_tmp)
 
-    buttons = []
+    d = dict(args=['visible', [True for s in s_list]],
+             label='ALL',
+             method='restyle'
+        )
+
+    buttons = [d]
     for s in sample_list:
         buttons.append(_chrom_mk_button(s, s_list))
 
