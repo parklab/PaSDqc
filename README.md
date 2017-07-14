@@ -1,13 +1,16 @@
-# MDA-qc
-Comprehensive evaluation of single cell MDA library quality.
+# PaSD-qc
+PaSD-qc ("Power Spectral Density-qc", pronounced "passed-qc") provides comprehensive evaluation of the properties and qualities of single cell whole-genome sequencing (scWGS) data.
 
 ## Purpose
-Anyone who works with single cell mulitple displacement amplified (MDA) libraries knows that this technology is a fickle beast. Sometimes the amplification works great. Sometimes it works terribly. A central challenge is thus to identify high quality libraries before spending a bunch of time / money on deep sequencing and variant analysis.
+Anyone who works with scWGS libraries knows that the technology is a fickle beast. Sometimes the whole-genome amplification works great. Sometimes it works terribly. Biases abound, and these biases can affect the accuracy of variant calls. A central challenge is thus to determine the quality of amplification prior to deep sequencing measure the biases prior to variant calling.
 
-MDA-qc provides a simple command line tool to rapidly evaluate very low coverage (0.1 - 1x) sequencing of MDA libraries for quality using power spectral density estimation techniques. MDA-qc provides:
+PaSD-qc provides a simple command line tool to rapidly evaluate the amplification properties and quality of scWGS sequencing using a custom, highly accurate power spectral density estimation technique. PaSD-qc provides:
++ A robust measure of read depth variance for each sample
++ An accurate estimate of the autocovariance patterns each sample
++ An estimate of the full distribution of amplicon sizes in each sample
++ Identification of individual chromosomes which may appear copy aberrant due to poor amplification
++ A comparison of samples based on quality
 + A simple "good" / "bad" label for each library evaluated
-+ Sample clustering based on library quality similarity
-+ Identification of individual chromosomes displaying particularly poor amplification
 + An html report full of fun, interactive plots that you can explore to your hearts content.
 
 ## Requirements
@@ -31,10 +34,10 @@ MDA-qc provides a simple command line tool to rapidly evaluate very low coverage
 ## Usage
 0. Preprocessing bam files: MDA-qc requires indexed BAM files aligned to either the GrCh37 or hg19 reference genomes as input. To ensure consistency across samples, we recommend sequencing (or downsampling) all libraries to either 1x or 0.1x prior to running MDA-qc.
 
-1. Quick usage: `python MDA-qc.py QC -d <dir/of/bams> -o <my/output/dir> -c db/categorical_spectra_[XX].txt`
+1. Quick usage: `./PaSDqc.py QC -d <dir/of/bams> -o <my/output/dir> -c db/categorical_spectra_[XX].txt`
    * `db/categorical_spectra_[XX].txt` is the gold-standard spectra corresponding to the depth of your samples (see FAQ for more)
 
-2. Long usage: `python MDA-qc.py QC [OPTIONS]`
+2. Long usage: `./PaSDqc.py QC [OPTIONS]`
 
    ```
    Options:
@@ -51,7 +54,7 @@ MDA-qc provides a simple command line tool to rapidly evaluate very low coverage
    -r        name of html report
    ```
 
-3. Even longer useage `python MDA-qc.py -h`
+3. Even longer useage `./PaSDqc.py -h`
 
 ## FAQ
 1. *How do I interpret the results in the html report?*
@@ -71,39 +74,39 @@ MDA-qc provides a simple command line tool to rapidly evaluate very low coverage
    * Sample Autocorrelation:
       + The most interesting feature of this plot is where it approaches zero. This provides an estimate of the maximum size of the amplicons in a library. 
 
-2. *How does MDA-qc categorize a sample as good or bad?*
+2. *How does PaSD-qc categorize a sample as good or bad?*
 
-   MDA-qc compares the behavior of the new sample to previously calculated gold-standard spectra. MDA-qc is distributed with generic gold standard-spectra for depths corresponding to 1x (`db/categorical_spectra_1x.txt`) and 0.1x (`db/categorical_spectra_0.1x.txt`). If you are using these generic spectra, please be sure to specify the correct file corresponding to the depth of your samples using the `-c` option.
+   PaSD-qc compares the behavior of the new sample to previously calculated gold-standard spectra. PaSD-qc is distributed with generic gold standard-spectra for depths corresponding to 1x (`db/categorical_spectra_1x.txt`) and 0.1x (`db/categorical_spectra_0.1x.txt`). If you are using these generic spectra, please be sure to specify the correct file corresponding to the depth of your samples using the `-c` option.
 
 3. *Can I define my own gold-standard spectra?*
 
-   Yes! MDA-qc is also a python library. It includes a method to generate new gold standard spectra using previously analyzed samples. Within the MDA-qc dir, start python
+   Yes! PaSD-qc is also a python library. It includes a method to generate new gold standard spectra using previously analyzed samples. Within the PaSD-qc dir, start python
    ```
    >>> from src import extra_tools
    >>> freq, nd, sample_list = extra_tools.mk_ndarray("/path/to/analysis/dir")
    >>> cat_spec = extra_tools.mk_categorical_spectra(freq, nd, labels)
    ```
-   where `labels` is a list of the form `['good', 'good', 'bad', ...]` corresponding to user-assigned classifications to each sample in `sample_list`. Then save the `cat_spec` to a file. Tell MDA-qc to use this new file using the `-c` option the next time you run the program.
+   where `labels` is a list of the form `['good', 'good', 'bad', ...]` corresponding to user-assigned classifications to each sample in `sample_list`. Then save the `cat_spec` to a file. Tell PaSD-qc to use this new file using the `-c` option the next time you run the program.
 
 4. *I deleted the html report. Do I have to rerun the whole pipeline?*
 
-   No. The steps of MDA-qc can be run separately. To regenerate the report, simply run `python MDA-qc.py report -d /path/to/analysis/dir -c db/categorical_spectra_XX.txt`. Regenerating a report generally takes less than 1 minute.
+   No. The steps of PaSD-qc can be run separately. To regenerate the report, simply run `./PaSD-qc.py report -d /path/to/analysis/dir -c db/categorical_spectra_XX.txt`. Regenerating a report generally takes less than 1 minute.
 
-   To see all functions of MDA-qc, run `python MDA-qc.py -h`.
+   To see all functions of PaSD-qc, run `./PaSD-qc.py -h`.
 
 5. *Do you have some example data I can try out on?*
 
-   Yes. The source code is distributed with an `examples` directory. For size reasons, we do not distribute BAM files, but we do provide example power spectral densities generated by MDA-qc. You can compile these into an example report by running
+   Yes. The source code is distributed with an `examples` directory. For size reasons, we do not distribute BAM files, but we do provide example power spectral densities generated by PaSD-qc. You can compile these into an example report by running
    ```
-   python MDA-qc.py report -d examples/example_01 -c db/categorical_spectra_0.1x.txt
+   ./PaSD-qc.py report -d examples/example_01 -c db/categorical_spectra_0.1x.txt
    ```
    This will recreate the html report in the directory `examples/example_01`.
 
-6. *Doesn't plotly upload its plots to the interwebs? Can anyone see my MDA-qc plots??*
+6. *Doesn't plotly upload its plots to the interwebs? Can anyone see my PaSD-qc plots??*
 
    Rest easy, none of your plots are uploaded to the internet. We use the plotly javascript API to embed the plots directly into the html report. This means that a report is entirely self-contained, so you can send it around to collaborators without fear of plots not loading. It also means that the reports can be fairly large (several MBs), as the data required to generate the plots must also be embedded in the html file.
 
-7. *I want to use MDA-qc to analyze the quality of samples aligned to a different genome build. Is this possible*
+7. *I want to use PaSD-qc to analyze the quality of samples aligned to a different genome build. Is this possible*
 
    Yes, but you'll need to a bed file of uniquely mappable positions for the genome. Contact us for help with this.
 
