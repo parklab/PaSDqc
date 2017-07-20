@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/home/mas138/anaconda3/envs/test1/bin/python
 
 # MDAqc.py - top level executible for MDAqc package
 #
@@ -51,13 +51,15 @@ def extract(args):
     chrom_list = extra_tools.chroms_from_build(args.build)
 
     pool = mp.Pool(processes=args.n_procs)
+    res = []
     for f_in in args.in_file:
         fn_args = (f_in, out_dir, chrom_list)
         kwargs = {'build': args.build, 'map_qual': args.map_qual, 'clean': args.clean}
-        pool.apply_async(mappable_positions.extract_coverage, args=fn_args, kwds=kwargs)
+        res.append(pool.apply_async(mappable_positions.extract_coverage, args=fn_args, kwds=kwargs))
 
     pool.close()
     pool.join()
+    [r.get() for r in res]
 
 def PSD(args):
     """ Calculate power spectral densities from a directory of coverage files
@@ -118,10 +120,12 @@ def report(args):
     df_chrom = extra_tools.summarize_KL_div_by_chrom(j_list, sample_list)
 
     # Categorization
+    f_cat_spec = extra_tools.get_data_file(args.cat_spec)
+    print(f_cat_spec)
     avg_list = [psd.avg_PSD() for psd in psd_list]
     nd = np.array(avg_list)
     freq = np.array(df_list[0].index.tolist())
-    cat_spec = pd.read_table(args.cat_spec, index_col=0)
+    cat_spec = pd.read_table(f_cat_spec, index_col=0)
     df_clust = extra_tools.classify_samples(nd, sample_list, cat_spec)
 
     # Amplicon size distribution
@@ -207,10 +211,10 @@ def parse_args():
 
     parser['report'] = parser['subparse'].add_parser('report', help='Generate HTML report of MDA sample quality')
     parser['report'].add_argument('-d', '--dir', required=True,  default=None, help='directory in which to search for sample PSD files')
-    parser['report'].add_argument('-c', '--cat_spec', default='db/categorical_spectra_1x.txt', help='path to file of categorical spectra')
+    parser['report'].add_argument('-c', '--cat_spec', default='categorical_spectra_1x.txt', help='path to file of categorical spectra')
     parser['report'].add_argument('-o', '--rep_name', default='MDAqc_report', help='file name for html report')
     parser['report'].set_defaults(func=report)
-    parser['report'].add_argument('-u', '--bulk', default='db/bulk_1x.smooth3.spec', help='path to bulk spectrum')
+    parser['report'].add_argument('-u', '--bulk', default='bulk_1x.smooth3.spec', help='path to bulk spectrum')
 
     parser['QC'] = parser['subparse'].add_parser('QC', help='Run all MDAqc steps, starting with BAM files and ending with an html report')
     parser['QC'].add_argument('-i', '--in_file', default=None, nargs='+', help='input bam file(s)')

@@ -14,9 +14,10 @@ import plotly.figure_factory as ff
 
 from . import extra_tools
 
-def dendrogram(nd, sample_list, f_cat_spec):
+def dendrogram(nd, sample_list, p_cat_spec):
 
     # load categorical spectra
+    f_cat_spec = extra_tools.get_data_file(p_cat_spec)
     cat_spec = pd.read_table(f_cat_spec, index_col=0)
     nd_spec = cat_spec.as_matrix().T
     sample_spec = ['GOLD-{}'.format(c).upper() for c in cat_spec.columns.tolist()]
@@ -38,9 +39,10 @@ def dendrogram(nd, sample_list, f_cat_spec):
 
     return dend
 
-def PSD_plot(freq, nd, sample_list, bulk='db/bulk_1x.spec'):
+def PSD_plot(freq, nd, sample_list, bulk='bulk_1x.smooth3.spec'):
     # PSD plot
-    psd_bulk = pd.Series.from_csv(bulk, index_col=0, header=None, sep="\t").as_matrix()
+    f_bulk = extra_tools.get_data_file(bulk)
+    psd_bulk = pd.Series.from_csv(f_bulk, index_col=0, header=None, sep="\t").as_matrix()
     # psd_bulk = np.loadtxt(bulk)
     # psd_norm = [10*np.log10(row / psd_bulk) for row in nd]
     # psd_smooth = [scipy.signal.savgol_filter(psd, 101, 3) for psd in psd_norm]

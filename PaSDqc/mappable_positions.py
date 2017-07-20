@@ -12,6 +12,8 @@ import subprocess
 import os
 import argparse
 
+from . import extra_tools
+
 def exec_cmd(cmd, verbose=True):
     if verbose:
         print("Executing: {}".format(cmd))
@@ -128,8 +130,11 @@ def lookup_map_file(build, chrom):
 
     chrom = to_hg19_format(chrom)
 
-    path = pathlib.Path("db/")
-    map_file = sorted(path.glob('{}.{}.map.bed'.format(build, chrom)))[0]
+    # Always look for map files in the site-package directory
+    # dir_db = pkg_resources.resource_file('PaSDqc', 'db')
+    # path = pathlib.Path(dir_db)
+    # map_file = sorted(path.glob('{}.{}.map.bed'.format(build, chrom)))[0]
+    map_file = extra_tools.get_data_file('{}.{}.map.bed'.format(build, chrom))
 
     if not map_file:
         raise IOError("Uh oh, there's no map file matching {} and {}".format(build, chrom))

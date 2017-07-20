@@ -15,8 +15,30 @@ import pathlib
 import scipy.cluster.hierarchy as hc
 import scipy.integrate
 import sys
+import os
+import pkg_resources
 
 from . import PSDTools
+
+def get_data_file(f):
+    """ Get the path of a data file (e.g. categorical spectrum file)
+        First looks to see if the file exists on the current file system
+        If not, it looks in the site-package directory
+
+        f:  path to file
+    """
+    if os.path.isfile(f):
+        path = f
+
+    else:
+        p = pkg_resources.resource_filename('PaSDqc', "db/{}".format(f))
+        
+        if os.path.isfile(p):
+            path = p
+        else:
+            raise IOError("{} is neither a system file nor a site-package file. Are you sure you have the right file name?".format(f))
+
+    return path
 
 def chroms_from_build(build):
     """ Get list of chromosomes from a particular genome build

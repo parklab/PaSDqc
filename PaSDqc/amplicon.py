@@ -10,6 +10,8 @@ import scipy.stats
 import numpy as np
 import pandas as pd
 
+from . import extra_tools
+
 def func_logis(x, inter, asym, xmid, scal):
     """ Return logistic curve values for a given set of point
     """
@@ -168,7 +170,7 @@ class AmplDist(object):
         """
         return inter + asym * scipy.special.gammainc(alpha, beta*x)
 
-    def fit_curve(self, method='erf', bulk="db/bulk_1x.smooth3.spec", shift=0):
+    def fit_curve(self, method='erf', bulk="bulk_1x.smooth3.spec", shift=0):
         """ Fit a curve of specified type to power spectral density
             The logistic is fit to the "flipped" psd where the x-axis is in BP not 1/BP
         """
@@ -178,7 +180,8 @@ class AmplDist(object):
         f_fit = getattr(self, "func_{}".format(method))
 
         # Load bulk spectrum
-        psd_bulk = pd.Series.from_csv(bulk, index_col=0, header=None, sep="\t").as_matrix()
+        f_bulk = extra_tools.get_data_file(bulk)
+        psd_bulk = pd.Series.from_csv(f_bulk, index_col=0, header=None, sep="\t").as_matrix()
         # psd_bulk = np.loadtxt(bulk)
 
         # Normalize psd by bulk spectrum and shift
