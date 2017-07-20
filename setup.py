@@ -1,7 +1,7 @@
 # from distutils.core import setup
 from setuptools import setup
 
-def check_dependencies()
+def check_dependencies():
     install_requires = []
 
     # Assuming the python standard library is installed...
@@ -61,7 +61,7 @@ if __name__ == "__main__":
         version = '1.0.0',
         packages = ['PaSDqc'],
         scripts = ['scripts/PaSDqc'],
-        install_requires = install_requires
+        install_requires = install_requires,
         author = "Maxwell A. Sherman",
         author_email = "maxwell_sherman@hms.harvard.edu",
         url = "https://github.com/parklab/PaSD-qc",
