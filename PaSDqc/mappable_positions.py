@@ -4,7 +4,7 @@
 # rev 2017-03-21 (MS: removal of pos files after cov extraction)
 # Notes:
 
-import pathlib2
+import pathlib
 import pandas as pd
 import numpy as np
 # import pybedtools as pybt
@@ -91,8 +91,8 @@ def extract_coverage(bam_file, out_dir, chrom_list, build='hg19', map_qual=30, c
           2) Determine coverage at extracted positions
     """
     # print('something')
-    p_bam = pathlib2.Path(bam_file)
-    p_out = pathlib2.Path(out_dir)
+    p_bam = pathlib.Path(bam_file)
+    p_out = pathlib.Path(out_dir)
 
     # Should make this parallel!!!
     for chrom in chrom_list:
@@ -128,7 +128,7 @@ def lookup_map_file(build, chrom):
 
     chrom = to_hg19_format(chrom)
 
-    path = pathlib2.Path("db/")
+    path = pathlib.Path("db/")
     map_file = sorted(path.glob('{}.{}.map.bed'.format(build, chrom)))[0]
 
     if not map_file:

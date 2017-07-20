@@ -11,7 +11,7 @@ import statsmodels.nonparametric
 import matplotlib.pyplot as plt
 import seaborn as sns
 import re
-import pathlib2
+import pathlib
 import os
 
 class ChromPSD(object):
@@ -233,7 +233,7 @@ class SamplePSD(object):
         if sample:
             pattern = sample + pattern
 
-        p = pathlib2.Path(d_path)
+        p = pathlib.Path(d_path)
         file_list = sorted(p.glob(pattern))
         name = cls.name_from_file(file_list[0])
 

@@ -11,7 +11,7 @@ import statsmodels.nonparametric
 import matplotlib.pyplot as plt
 import seaborn as sns
 import re
-import pathlib2
+import pathlib
 import scipy.cluster.hierarchy as hc
 import scipy.integrate
 import sys
@@ -138,7 +138,7 @@ def mk_ndarray(dir_in):
             nd          nd array    array of PSDs
             sample_list list        names of samples
     """
-    p = pathlib2.Path(dir_in)
+    p = pathlib.Path(dir_in)
     file_list = sorted(p.glob("*chroms.spec"))
     sample_list = [f.name.split('.chroms.spec')[0] for f in file_list]
 

@@ -8,18 +8,18 @@
 
 import os
 import argparse
-import pathlib2
+import pathlib
 import pandas as pd
 import numpy as np
 import multiprocessing as mp
 import plotly.offline as py
 
-from src import mappable_positions
-from src import PSDTools
-from src import extra_tools
-from src import amplicon
-from src import plotly_tools
-from src import report_writer
+from PaSDqc import mappable_positions
+from PaSDqc import PSDTools
+from PaSDqc import extra_tools
+from PaSDqc import amplicon
+from PaSDqc import plotly_tools
+from PaSDqc import report_writer
 
 def extract(args):
     """ Extract coverage at uniquely mappable positions in a bam file
@@ -43,7 +43,7 @@ def extract(args):
         if args.pattern:
             pattern = "*" + args.pattern + pattern
 
-        p = pathlib2.Path(args.dir_in)
+        p = pathlib.Path(args.dir_in)
         file_list = sorted(p.glob(pattern))
         # file_list = sorted(p.glob("*.bam"))
         args.in_file = [str(f) for f in file_list]
@@ -62,7 +62,7 @@ def extract(args):
 def PSD(args):
     """ Calculate power spectral densities from a directory of coverage files
     """
-    dir_in = pathlib2.Path(args.dir)
+    dir_in = pathlib.Path(args.dir)
     dir_search = dir_in / 'cov'
 
     dir_out = dir_in / 'psd'
@@ -102,7 +102,7 @@ def _build_and_save(dir_in, sample, clean, fout):
     psd.save(str(fout))
 
 def report(args):
-    p = pathlib2.Path(args.dir)
+    p = pathlib.Path(args.dir)
     d_psd = p / 'psd'
     file_list = sorted(d_psd.glob('*.chroms.spec'))
 
