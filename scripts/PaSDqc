@@ -14,12 +14,7 @@ import numpy as np
 import multiprocessing as mp
 import plotly.offline as py
 
-from PaSDqc import mappable_positions
-from PaSDqc import PSDTools
-from PaSDqc import extra_tools
-from PaSDqc import amplicon
-from PaSDqc import plotly_tools
-from PaSDqc import report_writer
+import PaSDqc
 
 def extract(args):
     """ Extract coverage at uniquely mappable positions in a bam file
@@ -48,14 +43,14 @@ def extract(args):
         # file_list = sorted(p.glob("*.bam"))
         args.in_file = [str(f) for f in file_list]
 
-    chrom_list = extra_tools.chroms_from_build(args.build)
+    chrom_list = PaSDqc.extra_tools.chroms_from_build(args.build)
 
     pool = mp.Pool(processes=args.n_procs)
     res = []
     for f_in in args.in_file:
         fn_args = (f_in, out_dir, chrom_list)
         kwargs = {'build': args.build, 'map_qual': args.map_qual, 'clean': args.clean}
-        res.append(pool.apply_async(mappable_positions.extract_coverage, args=fn_args, kwds=kwargs))
+        res.append(pool.apply_async(PaSDqc.mappable_positions.extract_coverage, args=fn_args, kwds=kwargs))
 
     pool.close()
     pool.join()
@@ -100,7 +95,7 @@ def _build_and_save(dir_in, sample, clean, fout):
     """
 
     print(fout)
-    psd = PSDTools.SamplePSD.build_from_dir(str(dir_in), sample=sample, clean=clean)
+    psd = PaSDqc.PSDTools.SamplePSD.build_from_dir(str(dir_in), sample=sample, clean=clean)
     psd.save(str(fout))
 
 def report(args):
@@ -115,21 +110,20 @@ def report(args):
     # Chrom warnings
     sample_list = [f.name.split('.chroms.spec')[0] for f in file_list]
     df_list = [pd.read_table(str(f), index_col=0) for f in file_list]
-    psd_list = [PSDTools.SamplePSD(df, name=s) for df, s in zip(df_list, sample_list)]
+    psd_list = [PaSDqc.PSDTools.SamplePSD(df, name=s) for df, s in zip(df_list, sample_list)]
     j_list = [psd.KL_div_by_chrom() for psd in psd_list]
-    df_chrom = extra_tools.summarize_KL_div_by_chrom(j_list, sample_list)
+    df_chrom = PaSDqc.extra_tools.summarize_KL_div_by_chrom(j_list, sample_list)
 
     # Categorization
-    f_cat_spec = extra_tools.get_data_file(args.cat_spec)
-    print(f_cat_spec)
+    f_cat_spec = PaSDqc.extra_tools.get_data_file(args.cat_spec)
     avg_list = [psd.avg_PSD() for psd in psd_list]
     nd = np.array(avg_list)
     freq = np.array(df_list[0].index.tolist())
     cat_spec = pd.read_table(f_cat_spec, index_col=0)
-    df_clust = extra_tools.classify_samples(nd, sample_list, cat_spec)
+    df_clust = PaSDqc.extra_tools.classify_samples(nd, sample_list, cat_spec)
 
     # Amplicon size distribution
-    amplicon_list = [amplicon.AmplDist(freq, avg) for avg in nd]
+    amplicon_list = [PaSDqc.amplicon.AmplDist(freq, avg) for avg in nd]
     [amp.fit_curve(bulk=args.bulk, method='erf') for amp in amplicon_list]
     # amplicon_list = [amplicon.PSDLogis(freq, avg) for avg in nd]
     # [amp.fit_logistic(bulk=args.bulk) for amp in amplicon_list]
@@ -147,24 +141,24 @@ def report(args):
     df_var = pd.DataFrame(nd_acf[:, 0], columns=['variance'], index=sample_list)
 
     # Cluster plot
-    dend = plotly_tools.dendrogram(nd, sample_list, args.cat_spec)
+    dend = PaSDqc.plotly_tools.dendrogram(nd, sample_list, args.cat_spec)
     div_dend = py.plot(dend, output_type='div')
 
     # PSD plot
-    psd = plotly_tools.PSD_plot(freq, nd, sample_list, bulk=args.bulk)
+    psd = PaSDqc.plotly_tools.PSD_plot(freq, nd, sample_list, bulk=args.bulk)
     div_psd = py.plot(psd, output_type='div')
 
     # Amplicon dist plot
-    pdf = plotly_tools.amplicon_density_plot(amplicon_list, pdf_list, sample_list)
+    pdf = PaSDqc.plotly_tools.amplicon_density_plot(amplicon_list, pdf_list, sample_list)
     # pdf = plotly_tools.amplicon_density_plot(10**amplicon_list[0].freq['dist'], pdf_list, sample_list)
     div_pdf = py.plot(pdf, output_type='div')
 
     # ACF plot
-    acf = plotly_tools.ACF_plot(lags, nd_acf, sample_list)
+    acf = PaSDqc.plotly_tools.ACF_plot(lags, nd_acf, sample_list)
     div_acf = py.plot(acf, output_type='div')
 
     # Chrom plot
-    chrom = plotly_tools.chrom_KL_plot(j_list, sample_list)
+    chrom = PaSDqc.plotly_tools.chrom_KL_plot(j_list, sample_list)
     div_chrom = py.plot(chrom, output_type='div')
 
     # Report generation
@@ -172,7 +166,7 @@ def report(args):
     fout_name = args.rep_name + '.html'
     fout = p / fout_name
     
-    report_writer.writer(df, div_dend, div_psd, div_acf, div_chrom, div_pdf, str(fout))
+    PaSDqc.report_writer.writer(df, div_dend, div_psd, div_acf, div_chrom, div_pdf, str(fout))
 
     fout_df = d_data / (args.rep_name + '.table.txt')
     df.to_csv(str(fout_df), header=True, index=True, sep="\t")
