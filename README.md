@@ -28,8 +28,8 @@ PaSD-qc provides a simple command line tool to rapidly evaluate the amplificatio
 ## Installation
 **PaSDqc is currently in beta. A stable release will be available soon.**
 1. clone this repository `git clone https://github.com/parklab/PaSDqc.git`
-2. Run `make`
-    * This will creat the python distribution and install it as a site-package 
+2. cd into the directory and run `make`
+    * This will create the python distribution and install it as a site-package 
 3. Install [samtools](http://www.htslib.org/download/) and make sure its on your PATH.
 
 ## Usage
