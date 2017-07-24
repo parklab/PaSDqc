@@ -6,3 +6,4 @@ from . import report_writer
 from . import extra_tools
 from . import mappable_positions
 from . import plotly_tools
+from . import simulate
