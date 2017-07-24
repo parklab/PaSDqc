@@ -7,7 +7,7 @@
 import numpy as np
 import scipy.stats
 
-from src import PSDTools
+from . import PSDTools
 
 def simulate_logis_profile(start, end, mu, sigma, depth=1):
     """ Simulate linear amplification using a logistic distribution
