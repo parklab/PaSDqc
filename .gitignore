@@ -2,3 +2,4 @@ tmp
 tmp/
 __pycache__/
 *.lsf
+.ipynb_checkpoints
