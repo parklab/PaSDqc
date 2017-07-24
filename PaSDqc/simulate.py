@@ -144,7 +144,7 @@ def simulate(f_sim, start, end, n_obs, *args, **kwargs):
     """
     print("Simulating read depth")
     rd = f_sim(start, end+100000, *args, **kwargs)
-    rd_s = pd.DataFrame(rd[:end], columns['depth'])
+    rd_s = pd.DataFrame(rd[:end], columns=['depth'])
     rd_uniq = rd_s[rd_s.depth > 0].sample(n=n_obs, replace=False).sort_index()
     rd_uniq['pos'] = rd_uniq.index
 
