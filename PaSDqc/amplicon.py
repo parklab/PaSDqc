@@ -1,7 +1,7 @@
 # amplicon.py - classes for fitting amplicon distributions from PSDs
 #
-# v 0.1.0
-# rev 2017-07-14 (MS: created)
+# v 1.0.10
+# rev 2017-07-26 (MS: more robust curve fitting)
 # Notes:
 
 import scipy.optimize
@@ -193,7 +193,7 @@ class AmplDist(object):
 
         # Fit the curve
         try:
-            popt, pcov = scipy.optimize.curve_fit(f_fit, period, psd_cut)
+            popt, pcov = scipy.optimize.curve_fit(f_fit, period, psd_cut, method='trf')
 
             # Make sure the scale parameter is positive
             if popt[-1] < 0:
@@ -281,6 +281,7 @@ class AmplDist(object):
 
         else:
             pdf = np.zeros(100)
+            vals = np.linspace(2, 6, 100)
 
         self.freq['dist'] = 10**vals
 

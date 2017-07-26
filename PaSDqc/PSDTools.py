@@ -1,7 +1,7 @@
 # PSDTools.py - classes for MDAqc Power Spectral Density calculations
 #
-# v 0.0.10
-# rev 2017-03-23 (MS: Remove .cov files after generating PSDs)
+# v 1.0.10
+# rev 2017-07-26 (MS: proper finding of centromere file)
 # Notes:
 
 import pandas as pd
@@ -13,6 +13,8 @@ import seaborn as sns
 import re
 import pathlib
 import os
+
+from . import extra_tools
 
 class ChromPSD(object):
     """ Lombe-Scargle PSD estimation for a single Chromosome
@@ -220,7 +222,7 @@ class SamplePSD(object):
         self.df = df
 
     @classmethod
-    def build_from_dir(cls, d_path, sample=None, clean=False):
+    def build_from_dir(cls, d_path, sample=None, clean=False, build='grch37'):
         """ Build SamplePSD object from a directory of .cov files
 
             Args:
@@ -237,7 +239,7 @@ class SamplePSD(object):
         file_list = sorted(p.glob(pattern))
         name = cls.name_from_file(file_list[0])
 
-        df = cls._build_dataframe(file_list)
+        df = cls._build_dataframe(file_list, build)
 
         if clean:
             [os.remove(str(f)) for f in file_list]
@@ -272,7 +274,7 @@ class SamplePSD(object):
         return name
 
     @staticmethod
-    def _build_dataframe(f_list):
+    def _build_dataframe(f_list, build='grch37'):
         """ Build dataframe of a sample's PSDs -- one column per chromosome
 
             Args:
@@ -285,8 +287,9 @@ class SamplePSD(object):
         psd_list = [ChromPSD(str(f)) for f in f_list]
 
         # perform PSD estimation
+        f_cent = extra_tools.get_data_file("{}.centromeres.bed".format(build))
         freq = np.linspace(1e-6, 5e-3, 8000)
-        [psd.PSD_LS_chrom("db/grch37.centromeres.bed", freq=freq) for psd in psd_list]
+        [psd.PSD_LS_chrom(f_cent, freq=freq) for psd in psd_list]
 
         # Assemble into dataframe
         items = [('freq', freq)]
