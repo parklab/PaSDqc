@@ -28,8 +28,9 @@ PaSD-qc provides a simple command line tool to rapidly evaluate the amplificatio
 ## Installation
 **PaSDqc is currently in beta. A stable release will be available soon.**
 1. clone this repository `git clone https://github.com/parklab/PaSDqc.git`
-2. cd into the directory and run `make`
-    * This will create the python distribution and install it as a site-package 
+2. cd into the newly created `PaSDqc` directory and run `make`
+    * This will create the python distribution and install it as a site-package
+    * It will also automatically (try to) install any missing python dependencies
 3. Install [samtools](http://www.htslib.org/download/) and make sure its on your PATH.
 
 ## Usage
@@ -63,6 +64,10 @@ PaSD-qc provides a simple command line tool to rapidly evaluate the amplificatio
       + __Variance__: the higher this number, the worse the overall quality of the library
       + __label__: inferred quality of the library based on gold-standard performance
       + __P(good) / P(bad)__: the probability of label assignment
+      + __Amplicon median size__: estimated median amplicon size
+      + __Amplicon mean size__: estimated mean amplicon size
+      + __Amplicon lower size__: 5% lower bound on amplicon size range
+      + __Amplicon upper size__: 95% upper bound on amplicon size range 
       + __Chrom: pass__: list of chromosomes with consistent quality
       + __Chrom: warn__: list of chromosomes with slightly outlying quality
       + __Chrom: fail__: list of chromosomes with signficantly outlying quality
@@ -70,6 +75,8 @@ PaSD-qc provides a simple command line tool to rapidly evaluate the amplificatio
    * Chromosome outlier plots: chromosome quality by sample
       + The higher the y-value, the worse the quality. Warn chromosomes are one standard deviation above the average. Fail chromosomes are two standard deviations above.
       + NOTE: due to a short coming in the plotly API, all points for all samples are plotted at startup. Selecting a particular sample from the dropdown menu will display a sane plot.
+   * Amplicon size distributions
+      + Estimated distributions of amplicon sizes (in log coordinates)
    * Sample Periodograms:
       + Please see our paper for details on interpretting this plot.
    * Sample Autocorrelation:
