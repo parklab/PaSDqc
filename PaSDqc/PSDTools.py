@@ -1,8 +1,8 @@
 # PSDTools.py - classes for MDAqc Power Spectral Density calculations
 #
-# v 1.0.13 (revision1)
-# rev 2017-09-11 (MS: More robust Welch implementation using median)
-# Notes: Helper function to normalize PSDs
+# v 1.0.14 (revision1)
+# rev 2017-09-11 (MS: class for sub-chrom region outlier detection)
+# Notes:
 
 import pandas as pd
 import numpy as np
@@ -366,3 +366,119 @@ class SamplePSD(object):
 def normalize_psd(psd, bulk="bulk_1x.smooth3.spec"):
     psd_bulk = extra_tools.load_bulk_psd(bulk)
     return 10 * np.log10(psd / psd_bulk)
+
+class RegionPSD(object):
+
+    def __init__(self, region_dict, name='region_psd'):
+        self.name = name
+        self.regions = region_dict
+
+    @classmethod
+    def analyze(cls, d_path, sample=None, clean=False, build='grch37'):
+        """ Build SamplePSD object from a directory of .cov files
+
+            Args:
+                d_path      str     path to directory of .cov files
+
+            Kwargs:
+                sample      str     sample name
+        """
+        pattern = "*.cov"
+        if sample:
+            pattern = sample + pattern
+
+        p = pathlib.Path(d_path)
+        file_list = sorted(p.glob(pattern))
+        name = SamplePSD.name_from_file(file_list[0])
+        # chr_list = [f.name.split('.')[-4] for f in file_list]
+
+        regions = cls._build_region_dict(file_list, build)
+
+        if clean:
+            [os.remove(str(f)) for f in file_list]
+
+        # chrom_list = cls.chroms_from_files(file_list, build)
+
+        return cls(regions, name)
+
+    @staticmethod
+    def _build_region_dict(file_list, build, l_region=1e7, l_seg=5e5):
+        f_cent = extra_tools.get_data_file("{}.centromeres.bed".format(build))
+        df_cent = pd.read_table(f_cent, names=['start', 'end'], index_col=0)
+
+        freq_tmp = np.linspace(1e-6, 5e-3, 8000)
+        freq = freq_tmp[freq_tmp<=5e-3] 
+
+        regions = {}
+
+        for f in file_list:
+            chrom_name = f.name.split(".")[-4] 
+            print("Analyzing {}".format(f))
+            df = pd.read_table(str(f), names=['chrom', 'pos', 'depth'])
+
+            chrom = str(df.chrom.iloc[0])
+            cent_start = df_cent.loc[chrom, :].start
+            cent_end = df_cent.loc[chrom, :].end
+            print(cent_start, cent_end)
+
+            df_p = df[df.pos < cent_start]
+            df_q = df[df.pos > cent_end]
+
+            if len(df_p > 1e7):
+                print('p arm')
+                pwr_p, regions_p = RegionPSD._region_psd(df_p, freq, l_region, l_seg)
+            else:
+                pwr_p, regions_p = [], []
+
+            if len(df_q > 1e7):
+                print('q arm')
+                pwr_q, regions_q = RegionPSD._region_psd(df_q, freq, l_region, l_seg)
+            else:
+                pwr_q, regions_q = [], []
+
+            psd_list = pwr_p + pwr_q
+            region_list = regions_p + regions_q
+
+            columns = [str(region[0]) for region in region_list]
+            df_psd = pd.DataFrame(np.array(psd_list).T, columns=columns, index=freq) 
+            regions[chrom_name] = SamplePSD(df_psd, name=chrom_name)
+
+        return regions
+
+    @staticmethod
+    def _region_psd(df, freq, l_region, l_seg):
+        region_bounds = np.arange(df.pos.iloc[0], df.pos.iloc[-1], l_region).astype(int)
+        region_bounds[-1] = df.pos.iloc[-1]
+        starts = region_bounds[:-1]
+        ends = region_bounds[1:]
+ 
+        psd_list = []
+        count_list = []
+        region_list = []
+        region_blacklist = []
+
+        for start, end in zip(starts, ends):
+            print(start, end)
+            df_tmp = df.loc[(df.pos>=start)&(df.pos<end), :]
+            print(df_tmp.shape)
+
+            if df_tmp.shape[0]:
+                pwr, count = ChromPSD.PSD_LS_manual(df_tmp, freq, l_seg, avg_fnc=np.mean)
+                psd_list.append(pwr)
+                count_list.append(count)
+                region_list.append([start, end])
+
+            else:
+                region_blacklist.append([start, end])
+
+        # columns = [str(region[0]) for region in region_list]
+        # df_psd = pd.DataFrame(np.array(psd_list).T, columns=columns, index=freq)
+        # psdtool = PaSDqc.PSDTools.SamplePSD(df_psd, name=chrom_name)
+
+        return psd_list, region_list
+
+    def KL_div(self):
+        self.kl = {}
+
+        for region in self.regions:
+            self.kl[region] = self.regions[region].KL_div_by_chrom()
