@@ -1,8 +1,8 @@
 # PSDTools.py - classes for MDAqc Power Spectral Density calculations
 #
-# v 0.0.10
-# rev 2017-03-23 (MS: Remove .cov files after generating PSDs)
-# Notes:
+# v 1.0.13 (revision1)
+# rev 2017-09-11 (MS: More robust Welch implementation using median)
+# Notes: Helper function to normalize PSDs
 
 import pandas as pd
 import numpy as np
@@ -13,6 +13,8 @@ import seaborn as sns
 import re
 import pathlib
 import os
+
+from . import extra_tools
 
 class ChromPSD(object):
     """ Lombe-Scargle PSD estimation for a single Chromosome
@@ -59,7 +61,7 @@ class ChromPSD(object):
         return starts, ends
 
     @staticmethod
-    def _welch_PSD(freq, pwr, df, starts, ends, count=1, verbose=False):
+    def _welch_PSD(freq, pwr, df, starts, ends, count=1, verbose=False, avg_fnc=np.median):
         """ Perform Welch spectral density estimation
             NOTE: requires an initial freq / pwr vector
 
@@ -77,6 +79,9 @@ class ChromPSD(object):
             Returns:
                 freq        1d array        frequencies at which PSD calculates
         """
+        ## CHANGES TO TRY TO COMBAT OUTLIER WINDOWS!!
+        pwr_list = [pwr]
+
         for start, end in zip(starts, ends):
             if verbose:
                 print(start, end)
@@ -86,9 +91,26 @@ class ChromPSD(object):
 
             if(len(df_tmp) > 0):
                 count += 1
-                pwr += astropy.stats.LombScargle(df_tmp.pos, df_tmp.depth).power(freq, normalization='psd')
+                pwr_list.append(astropy.stats.LombScargle(df_tmp.pos, df_tmp.depth).power(freq, normalization='psd'))
 
-        return freq, pwr, count
+        pwr_nd = np.array(pwr_list)
+        pwr_med = avg_fnc(pwr_nd, axis=0)
+        # pwr_med = np.median(pwr_nd, axis=0)
+
+        return freq, pwr_med, count
+
+        # for start, end in zip(starts, ends):
+        #     if verbose:
+        #         print(start, end)
+
+        #     mask = (df.pos >= start) & (df.pos < end) 
+        #     df_tmp = df[mask]
+
+        #     if(len(df_tmp) > 0):
+        #         count += 1
+        #         pwr += astropy.stats.LombScargle(df_tmp.pos, df_tmp.depth).power(freq, normalization='psd')
+
+        # return freq, pwr, count
 
     @staticmethod
     def PSD_LS_auto(df, l_seg=1e7, p_overlap=0.5, verbose=False):
@@ -121,7 +143,7 @@ class ChromPSD(object):
         return freq_agg, pwr_agg, count
 
     @staticmethod
-    def PSD_LS_manual(df, freq, l_seg=1e7, p_overlap=0.5, verbose=False, inplace=True):
+    def PSD_LS_manual(df, freq, l_seg=1e7, p_overlap=0.5, verbose=False, inplace=True, avg_fnc=np.median):
         """ Lomb-Scargle PSD estimate at manually specified frequencies
 
             Args:
@@ -146,7 +168,7 @@ class ChromPSD(object):
         pwr_agg = astropy.stats.LombScargle(df_red.pos, df_red.depth).power(freq, normalization='psd')
 
         # Welch PSD
-        freq_agg, pwr_agg, count = ChromPSD._welch_PSD(freq, pwr_agg, df, starts[1:], ends[1:], verbose=verbose) 
+        freq_agg, pwr_agg, count = ChromPSD._welch_PSD(freq, pwr_agg, df, starts[1:], ends[1:], verbose=verbose, avg_fnc=avg_fnc) 
 
         return pwr_agg, count
 
@@ -195,7 +217,11 @@ class ChromPSD(object):
             count_q = 0
 
         self.freq = freq
-        self.pwr = (pwr_p + pwr_q) / (count_p + count_q)
+        # self.pwr = (pwr_p + pwr_q) / (count_p + count_q)
+
+        ## CHANGE TO TRY TO COMBAT OUTLIER WINDOWS
+        count_tot = count_p + count_q
+        self.pwr = (count_p / count_tot) * pwr_p + (count_q / count_tot) * pwr_q
 
 class SamplePSD(object):
     """ Lombe-Scargle PSD estimation for an entire sample (all chromosomes)
@@ -212,15 +238,15 @@ class SamplePSD(object):
             df          data frame containing position and depth information for the chromosome
     """
 
-    name = None
-    df = None
+    # name = None
+    # df = None
 
     def __init__(self, df, name):
         self.name = name
         self.df = df
 
     @classmethod
-    def build_from_dir(cls, d_path, sample=None, clean=False):
+    def build_from_dir(cls, d_path, sample=None, clean=False, build='grch37'):
         """ Build SamplePSD object from a directory of .cov files
 
             Args:
@@ -237,7 +263,7 @@ class SamplePSD(object):
         file_list = sorted(p.glob(pattern))
         name = cls.name_from_file(file_list[0])
 
-        df = cls._build_dataframe(file_list)
+        df = cls._build_dataframe(file_list, build)
 
         if clean:
             [os.remove(str(f)) for f in file_list]
@@ -272,7 +298,7 @@ class SamplePSD(object):
         return name
 
     @staticmethod
-    def _build_dataframe(f_list):
+    def _build_dataframe(f_list, build='grch37'):
         """ Build dataframe of a sample's PSDs -- one column per chromosome
 
             Args:
@@ -285,8 +311,9 @@ class SamplePSD(object):
         psd_list = [ChromPSD(str(f)) for f in f_list]
 
         # perform PSD estimation
+        f_cent = extra_tools.get_data_file("{}.centromeres.bed".format(build))
         freq = np.linspace(1e-6, 5e-3, 8000)
-        [psd.PSD_LS_chrom("db/grch37.centromeres.bed", freq=freq) for psd in psd_list]
+        [psd.PSD_LS_chrom(f_cent, freq=freq) for psd in psd_list]
 
         # Assemble into dataframe
         items = [('freq', freq)]
@@ -335,3 +362,7 @@ class SamplePSD(object):
         """
         print(f_out)
         self.df.to_csv(f_out, sep="\t", header=True, index=True)
+
+def normalize_psd(psd, bulk="bulk_1x.smooth3.spec"):
+    psd_bulk = extra_tools.load_bulk_psd(bulk)
+    return 10 * np.log10(psd / psd_bulk)
