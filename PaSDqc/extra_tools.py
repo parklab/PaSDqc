@@ -1,8 +1,8 @@
 # PSDTools.py - classes for MDAqc Power Spectral Density calculations
 #
-# v 0.1.1
-# rev 2017-07-14 (MS: Direct calculation of ACF from coverage data)
-# Notes: WARNING: This method is memory intensive
+# v 0.1.11 (revision1)
+# rev 2017-09-11 (MS: fixed API for plotting chrom KL divergences)
+# Notes: method to load bulk PSD
 
 import pandas as pd
 import numpy as np
@@ -39,6 +39,12 @@ def get_data_file(f):
             raise IOError("{} is neither a system file nor a site-package file. Are you sure you have the right file name?".format(f))
 
     return path
+
+def load_bulk_psd(bulk="bulk_1x.smooth3.spec"):
+    f_bulk = get_data_file(bulk)
+    psd_bulk = pd.Series.from_csv(f_bulk, index_col=0, header=None, sep="\t").as_matrix()
+
+    return psd_bulk
 
 def chroms_from_build(build):
     """ Get list of chromosomes from a particular genome build
@@ -94,18 +100,18 @@ def plot_KL_div_by_chrom(j):
 
     mu = j.median()
     mad = np.median(np.abs(j - mu))
-    sd_1 = mu + mad
+    # sd_1 = mu + mad
     sd_2 = mu + 2 * mad
 
     chroms = j.index.tolist()
-    chroms[-2:] = ['23', '24']
+    # chroms[-2:] = ['23', '24']
     chroms = [int(c) for c in chroms]
     chroms = pd.Series(chroms)
 
-    ax.plot(chroms[(j <= (sd_1)).tolist()], j[j <= (sd_1)], 'o', label='Pass')
-    ax.plot(chroms[((j > sd_1) & (j <= sd_2)).tolist()], j[(j > sd_1) & (j <= sd_2)], 'o', label='Warn', color='orange')
+    ax.plot(chroms[(j <= (sd_2)).tolist()], j[j <= (sd_2)], 'o', label='Pass')
+    # ax.plot(chroms[((j > sd_1) & (j <= sd_2)).tolist()], j[(j > sd_1) & (j <= sd_2)], 'o', label='Warn', color='orange')
     ax.plot(chroms[(j > (sd_2)).tolist()], j[j > (sd_2)], 'o', label='Fail', color='red')
-    ax.plot(sorted(chroms), [sd_1 for i in range(len(chroms))], '--', label='one std')
+    # ax.plot(sorted(chroms), [sd_1 for i in range(len(chroms))], '--', label='one std')
     ax.plot(sorted(chroms), [sd_2 for i in range(len(chroms))], '--', label='two std')
     ax.legend(loc='upper left')
     ax.set_xlabel('chromosome')
@@ -113,7 +119,7 @@ def plot_KL_div_by_chrom(j):
 
     chroms = sorted(chroms)
     ax.xaxis.set_ticks(chroms)
-    chroms[-2:] = ['X', 'Y']
+    # chroms[-2:] = ['X', 'Y']
     ax.xaxis.set_ticklabels(chroms)
 
     return f

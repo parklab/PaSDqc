@@ -1,8 +1,8 @@
 # plotly_tools.py - methods for easy plotly plot creation
 #
-# v 0.1.2
-# rev 2017-07-14 (MS: Better chrom outlier plotting)
-# Notes: Better PSD plotting
+# v 1.0.12 (revision1)
+# rev 2017-09-11 (MS: Better labels for chom outlier plots)
+# Notes:
 
 import numpy as np
 import pandas as pd
@@ -192,19 +192,22 @@ def _chrom_trace(j, sample, chroms, text):
                         mode='markers', 
                         marker=dict(color='blue', size=10), 
                         name='pass', 
-                        text=text[j <= sd_1]
+                        text=sample
+                        # text=text[j <= sd_1]
              )
     trace1 = go.Scatter(x=chroms[(j > sd_1) & (j <= sd_2)], 
                         y=j[(j > sd_1) & (j <= sd_2)],
                         mode='markers', 
                         marker=dict(color='orange', size=10), 
-                        name='warn'
+                        name='warn',
+                        text=sample
              )
     trace2 = go.Scatter(x=chroms[j > sd_2], 
                         y=j[j > sd_2], mode='markers', 
                         marker=dict(color='red', size=10), 
                         name='fail', 
-                        text=text[j > sd_2]
+                        text=sample
+                        # text=text[j > sd_2]
                        )
 
     data = [trace0, trace1, trace2]
