@@ -1,8 +1,8 @@
 # PSDTools.py - classes for MDAqc Power Spectral Density calculations
 #
-# v 0.1.11 (revision1)
-# rev 2017-09-11 (MS: fixed API for plotting chrom KL divergences)
-# Notes: method to load bulk PSD
+# v 0.1.12 (rev2)
+# rev 2017-11-25 (MS: methods to summarize chrom classification)
+# Notes:
 
 import pandas as pd
 import numpy as np
@@ -56,6 +56,7 @@ def chroms_from_build(build):
             chrom_list      list
     """
     chroms = {'grch37': [i for i in range(1, 23)],
+              'hg19': ['chr{}'.format(i) for i in range(1, 23)]
     # chroms = {'grch37': [i for i in range(1, 23)] + ['X', 'Y'],
     }
 
@@ -83,6 +84,49 @@ def summarize_KL_div_by_chrom(j_list, sample_list):
 
     df = pd.DataFrame.from_items(zip(cols, [chrom_pass, chrom_warn, chrom_fail]))
     df.index = sample_list
+
+    return df
+
+def summarize_chrom_classif_by_sample(psd_list, sample_list):
+    """ Summarize chromosome classification by sample
+
+        Inputs:
+            psd_list: list of SamplePSD AFTER calc_chrom_props() has been run
+            sample_list: list of samples in same order as psd_list
+
+        Returns:
+            data frame where rows are samples, columns are chromosomes, and entries are the classification
+    """
+    cl_list = [psd.chrom_props.classif for psd in psd_list]
+    cols = psd_list[0].chrom_props.index
+    idx = [psd.name.split('.')[0] for psd in psd_list]
+    df_stat = pd.DataFrame(cl_list, columns=cols, index=idx)
+
+    return df_stat
+
+def summarize_chrom_classif_by_type(df_stat):
+    """ Summarize chrom classification by type after summarizing by sample
+
+        Inputs:
+            df_stat: dataframe produced by summarize_chrom_classif_by_sample()
+
+        Outputs:
+            dataframe where rows are samples and columns are chromsomes grouped by classification
+    """
+    chrom_pass = []
+    chrom_fail = []
+    chrom_gain = []
+    chrom_loss = []
+
+    for sample, row in df_stat.iterrows():
+        chrom_pass.append(row[row=='Pass'].index.tolist())
+        chrom_fail.append(row[row=='Fail'].index.tolist())
+        chrom_gain.append(row[row=='Possible gain'].index.tolist())
+        chrom_loss.append(row[row=='Possible loss'].index.tolist())
+
+    cols = ['Chom: pass', 'Chrom: gain?', 'Chrom: loss?', 'Chrom: fail']
+    df = pd.DataFrame.from_items(zip(cols, [chrom_pass, chrom_gain, chrom_loss, chrom_fail]))
+    df.index = df_stat.index
 
     return df
 

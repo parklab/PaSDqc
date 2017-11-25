@@ -111,10 +111,25 @@ def report(args):
     if not d_data.is_dir():
         d_data.mkdir()
 
-    # Chrom warnings
+    # Read data
+    print("Reading data from {}".format(p))
     sample_list = [f.name.split('.chroms.spec')[0] for f in file_list]
     df_list = [pd.read_table(str(f), index_col=0) for f in file_list]
     psd_list = [PaSDqc.PSDTools.SamplePSD(df, name=s) for df, s in zip(df_list, sample_list)]
+
+    print("Fitting chromosome and sample curves")
+    chroms = extra_tools.chroms_from_build(args.build)
+    [psd.chrom_curves(chroms) for psd in psd_list]
+    [psd.sample_curves() for psd in psd_list]
+
+    print("Calculating chromosome properties")
+    [psd.chrom_props(chroms) for psd in psd_list]
+    df_stat = extra_tools.summarize_chrom_classif_by_sample(psd_list, sample_list)
+    df_chrom = extra_tools.summarize_chrom_classif_by_type(df_stat)
+
+    # print("Inferring amplicon size distributions")
+
+    # Chrom warnings
     j_list = [psd.KL_div_by_chrom() for psd in psd_list]
     df_chrom = PaSDqc.extra_tools.summarize_KL_div_by_chrom(j_list, sample_list)
 
