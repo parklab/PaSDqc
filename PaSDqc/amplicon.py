@@ -239,15 +239,29 @@ class AmplDist(object):
 
             if method == 'erf':
                 dist = scipy.stats.norm(loc=popt[2], scale=popt[3])
+                x = dist.rvs(size=100000)
+                x_scale = 10**(x + shift)
+                self.mean = np.exp(np.log(10)*popt[2] + 0.5 * np.log(10)**2 * popt[3]**2)
+                self.median = np.exp(np.log(10)*popt[2])
+
             elif method == 'logis':
                 dist = scipy.stats.logistic(loc=popt[2], scale=popt[3])
+                x = dist.rvs(size=100000)
+                x_scale = 10**(x + shift)
+                self.mean = np.mean(x_scale)
+                self.median = np.median(x_scale)
+
             elif method == 'gamma':
                 dist = scipy.stats.gamma(a=popt[2], scale=1/popt[3])
+                x = dist.rvs(size=100000)
+                x_scale = 10**(x + shift)
+                self.mean = np.mean(x_scale)
+                self.median = np.median(x_scale)
 
-            x = dist.rvs(size=100000)
-            x_scale = 10**(x + shift)
-            self.mean = np.mean(x_scale)
-            self.median = np.median(x_scale)
+            # x = dist.rvs(size=100000)
+            # x_scale = 10**(x + shift)
+            # self.mean = np.mean(x_scale)
+            # self.median = np.median(x_scale)
             self.lower_95 = np.percentile(x_scale, 5)
             self.upper_95 = np.percentile(x_scale, 95)
 
