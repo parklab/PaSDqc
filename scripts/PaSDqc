@@ -2,9 +2,9 @@
 
 # MDAqc.py - top level executible for MDAqc package
 #
-# v 1.0.10
-# rev 2017-07-26 (MS: proper default file names)
-# Notes: report includes more lags in ACF eval
+# v 1.0.15 (revision2)
+# rev 2017-11-26 (MS: updated report generation)
+# Notes: 
 
 import os
 import argparse
@@ -116,46 +116,55 @@ def report(args):
     sample_list = [f.name.split('.chroms.spec')[0] for f in file_list]
     df_list = [pd.read_table(str(f), index_col=0) for f in file_list]
     psd_list = [PaSDqc.PSDTools.SamplePSD(df, name=s) for df, s in zip(df_list, sample_list)]
+    freq = psd_list[0].freq
 
     print("Fitting chromosome and sample curves")
-    chroms = extra_tools.chroms_from_build(args.build)
-    [psd.chrom_curves(chroms) for psd in psd_list]
-    [psd.sample_curves() for psd in psd_list]
+    chroms = PaSDqc.extra_tools.chroms_from_build(args.build)
+    [psd.fit_chrom_curves(chroms) for psd in psd_list]
+    [psd.fit_sample_curves() for psd in psd_list]
 
     print("Calculating chromosome properties")
-    [psd.chrom_props(chroms) for psd in psd_list]
-    df_stat = extra_tools.summarize_chrom_classif_by_sample(psd_list, sample_list)
-    df_chrom = extra_tools.summarize_chrom_classif_by_type(df_stat)
+    [psd.calc_chrom_props(chroms) for psd in psd_list]
+    df_stat = PaSDqc.extra_tools.summarize_chrom_classif_by_sample(psd_list, sample_list)
+    df_chrom = PaSDqc.extra_tools.summarize_chrom_classif_by_type(df_stat)
 
-    # print("Inferring amplicon size distributions")
+    print("Inferring amplicon size distributions")
+    [psd.calc_sample_props() for psd in psd_list]
+    [psd.infer_sample_amplicon_dist() for psd in psd_list]
+    df_amp = PaSDqc.extra_tools.summarize_sample_props(psd_list, sample_list)
+    param_names = psd_list[0].ampl.param_names('erf')
+    df_fit = pd.DataFrame(np.array([psd.sample_popts['avg'] for psd in psd_list]), columns=param_names, index=sample_list)
 
     # Chrom warnings
-    j_list = [psd.KL_div_by_chrom() for psd in psd_list]
-    df_chrom = PaSDqc.extra_tools.summarize_KL_div_by_chrom(j_list, sample_list)
+    # j_list = [psd.KL_div_by_chrom() for psd in psd_list]
+    # df_chrom = PaSDqc.extra_tools.summarize_KL_div_by_chrom(j_list, sample_list)
 
     # Categorization
+    print("Categorizing samples")
     f_cat_spec = PaSDqc.extra_tools.get_data_file(args.cat_spec)
     avg_list = [psd.avg_PSD() for psd in psd_list]
     nd = np.array(avg_list)
-    freq = np.array(df_list[0].index.tolist())
+    # freq = np.array(df_list[0].index.tolist())
     cat_spec = pd.read_table(f_cat_spec, index_col=0)
     df_clust = PaSDqc.extra_tools.classify_samples(nd, sample_list, cat_spec)
 
     # Amplicon size distribution
-    amplicon_list = [PaSDqc.amplicon.AmplDist(freq, avg) for avg in nd]
-    [amp.fit_curve(bulk=args.bulk, method='erf') for amp in amplicon_list]
-    size_ranges = [amp.amplicon_range() for amp in amplicon_list]
-    pdf_list = [amp.amplicon_dist() for amp in amplicon_list]
-    df_amp = pd.DataFrame(np.array(size_ranges).astype(int), columns=['amplicon median size', 'amplicon mean size', 'amplicon lower size', 'amplicon upper size'], index=sample_list)
-    param_names = amplicon_list[0].param_names('erf')
-    df_fit = pd.DataFrame(np.array([amp.popt['erf'] for amp in amplicon_list]), columns=param_names, index=sample_list)
+    # amplicon_list = [PaSDqc.amplicon.AmplDist(freq, avg) for avg in nd]
+    # [amp.fit_curve(bulk=args.bulk, method='erf') for amp in amplicon_list]
+    # size_ranges = [amp.amplicon_range() for amp in amplicon_list]
+    # pdf_list = [amp.amplicon_dist() for amp in amplicon_list]
+    # df_amp = pd.DataFrame(np.array(size_ranges).astype(int), columns=['amplicon median size', 'amplicon mean size', 'amplicon lower size', 'amplicon upper size'], index=sample_list)
+    # param_names = amplicon_list[0].param_names('erf')
+    # df_fit = pd.DataFrame(np.array([amp.popt['erf'] for amp in amplicon_list]), columns=param_names, index=sample_list)
 
     # ACF
     # lags = np.array([0, 1e2, 2e2, 3e2, 4e2, 5e2, 7e2, 8e2, 1e3, 5e3, 1e4, 2e4, 3e4, 5e4, 6e4, 7e4, 8e4, 9e4, 1e5, 2e5, 3e5, 4e5, 5e5, 6e5, 1e6])
+    print("Estimating sample autocovariance")
     lags = np.concatenate((np.arange(0, 1e3, 1e2), np.arange(1e3, 1e4, 1e3), np.arange(1e4, 1e5, 1e4), np.arange(1e5, 1.1e6, 1e5))) 
     nd_acf = np.array([PaSDqc.extra_tools.PSD_to_ACF(freq, avg, lags) for avg in nd]) 
     df_var = pd.DataFrame(nd_acf[:, 0], columns=['variance'], index=sample_list)
 
+    print("Generating plots")
     # Cluster plot
     dend = PaSDqc.plotly_tools.dendrogram(nd, sample_list, args.cat_spec)
     div_dend = py.plot(dend, output_type='div')
@@ -165,7 +174,8 @@ def report(args):
     div_psd = py.plot(psd, output_type='div')
 
     # Amplicon dist plot
-    pdf = PaSDqc.plotly_tools.amplicon_density_plot(amplicon_list, pdf_list, sample_list)
+    pdf = PaSDqc.plotly_tools.amplicon_density_plot(psd_list, sample_list)
+    # pdf = PaSDqc.plotly_tools.amplicon_density_plot(amplicon_list, pdf_list, sample_list)
     # pdf = plotly_tools.amplicon_density_plot(10**amplicon_list[0].freq['dist'], pdf_list, sample_list)
     div_pdf = py.plot(pdf, output_type='div')
 
@@ -174,7 +184,8 @@ def report(args):
     div_acf = py.plot(acf, output_type='div')
 
     # Chrom plot
-    chrom = PaSDqc.plotly_tools.chrom_KL_plot(j_list, sample_list)
+    chrom = PaSDqc.plotly_tools.chrom_KL_plot(psd_list, sample_list)
+    # chrom = PaSDqc.plotly_tools.chrom_KL_plot(j_list, sample_list)
     div_chrom = py.plot(chrom, output_type='div')
 
     # Report generation
@@ -182,13 +193,17 @@ def report(args):
     fout_name = args.rep_name + '.html'
     fout = p / fout_name
     
+    print("Writing report to {}".format(fout))
     PaSDqc.report_writer.writer(df, div_dend, div_psd, div_acf, div_chrom, div_pdf, str(fout))
 
+    print("Saving data to {}".format(d_data))
     fout_df = d_data / (args.rep_name + '.table.txt')
     df.to_csv(str(fout_df), header=True, index=True, sep="\t")
 
     fout_fit = d_data / (args.rep_name + '.fit.txt')
     df_fit.to_csv(str(fout_fit), header=True, index=True, sep="\t")
+
+    PaSDqc.report_writer.write_chrom_props(psd_list, sample_list, d_data, args.rep_name)
 
 def QC(args):
     extract(args)
@@ -226,6 +241,7 @@ def parse_args():
     parser['report'].add_argument('-o', '--rep_name', default='PaSDqc_report', help='file name for html report')
     parser['report'].set_defaults(func=report)
     parser['report'].add_argument('-u', '--bulk', default='bulk_1x.smooth3.spec', help='path to bulk spectrum')
+    parser['report'].add_argument('-b', '--build', default='grch37', choices=['grch37, hg19'], help='genome build')
 
     parser['QC'] = parser['subparse'].add_parser('QC', help='Run all MDAqc steps, starting with BAM files and ending with an html report')
     parser['QC'].add_argument('-i', '--in_file', default=None, nargs='+', help='input bam file(s)')

@@ -1,7 +1,7 @@
 # PSDTools.py - classes for MDAqc Power Spectral Density calculations
 #
-# v 1.0.13 (revision2)
-# rev 2017-11-26 (MS: SamplePSD fits sample/chrom ampl dists and sample ampl properties)
+# v 1.0.14 (revision2)
+# rev 2017-11-26 (MS: minor bug fixes)
 
 import pandas as pd
 import numpy as np
@@ -418,7 +418,7 @@ class SamplePSD(object):
             kl = kl_div[chrom]
             cl = self._classify_chrom(chrom, kl_div)
         
-            chrom_props = [kl, sub, supra, min_pos, median, mean, lower, upper, cl]
+            chrom_props = [kl, sub, supra, min_pos, int(median), int(mean), int(lower), int(upper), cl]
         
             # psd_chrom_list.append(psd_chrom)
             # amp_list.append(amp_chrom)
@@ -525,7 +525,7 @@ class SamplePSD(object):
         samp_fit = self.sample_curves['avg']
         median, mean, lower, upper = self.ampl.amplicon_range(samp_popt, method=method)
 
-        self.sample_props = [median, mean, lower, upper]
+        self.sample_props = [int(median), int(mean), int(lower), int(upper)]
 
     def infer_sample_amplicon_dist(self, method='erf'):
         """ Infer the sample amplicon distribution (wrapper for AmplDist.amplicon_dist)

@@ -1,7 +1,7 @@
 # report_writer.py - methods for writing html report
 #
-# v 0.1.0
-# rev 2017-07-14 (MS: added amplicon size distribution to reports
+# v 1.0.15 (revision2)
+# rev 2017-11-26 (MS: writing chromosome properties)
 # Notes:
 
 def writer(df, div_dend, div_psd, div_acf, div_chrom, div_pdf, fout):
@@ -40,3 +40,12 @@ def report_html(df_html, div_dend, div_psd, div_acf, div_chrom, div_amp):
 </html>'''
 
     return html_string
+
+def write_chrom_props(psd_list, sample_list, ddata, name):
+    d_out = ddata / 'chrom'
+    if not d_out.is_dir():
+        d_out.mkdir()
+
+    for psd, sample in zip(psd_list, sample_list):
+        f_out = d_out / (name + "_" + sample + "_chromProps.txt")
+        psd.chrom_props.to_csv(str(f_out), header=True, index=True, sep="\t")

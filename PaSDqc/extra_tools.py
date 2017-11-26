@@ -1,7 +1,7 @@
 # PSDTools.py - classes for MDAqc Power Spectral Density calculations
 #
-# v 0.1.14 (rev2)
-# rev 2017-11-26 (MS: plot chromosome classification matrix)
+# v 0.1.15 (rev2)
+# rev 2017-11-26 (MS: minor bug fixes)
 # Notes:
 
 import pandas as pd
@@ -56,7 +56,7 @@ def chroms_from_build(build):
         Returns:
             chrom_list      list
     """
-    chroms = {'grch37': [i for i in range(1, 23)],
+    chroms = {'grch37': [str(i) for i in range(1, 23)],
               'hg19': ['chr{}'.format(i) for i in range(1, 23)]
     # chroms = {'grch37': [i for i in range(1, 23)] + ['X', 'Y'],
     }
@@ -100,8 +100,7 @@ def summarize_chrom_classif_by_sample(psd_list, sample_list):
     """
     cl_list = [psd.chrom_props.classif for psd in psd_list]
     cols = psd_list[0].chrom_props.index
-    idx = [psd.name.split('.')[0] for psd in psd_list]
-    df_stat = pd.DataFrame(cl_list, columns=cols, index=idx)
+    df_stat = pd.DataFrame(cl_list, columns=cols, index=sample_list)
 
     return df_stat
 
@@ -125,7 +124,7 @@ def summarize_chrom_classif_by_type(df_stat):
         chrom_gain.append(row[row=='Possible gain'].index.tolist())
         chrom_loss.append(row[row=='Possible loss'].index.tolist())
 
-    cols = ['Chom: pass', 'Chrom: gain?', 'Chrom: loss?', 'Chrom: fail']
+    cols = ['Chrom: pass', 'Chrom: gain?', 'Chrom: loss?', 'Chrom: fail']
     df = pd.DataFrame.from_items(zip(cols, [chrom_pass, chrom_gain, chrom_loss, chrom_fail]))
     df.index = df_stat.index
 
