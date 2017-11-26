@@ -1,7 +1,7 @@
 # PSDTools.py - classes for MDAqc Power Spectral Density calculations
 #
-# v 1.0.12 (revision2)
-# rev 2017-11-25 (MS: SamplePSD now fits curves to chroms and sample)
+# v 1.0.13 (revision2)
+# rev 2017-11-26 (MS: SamplePSD fits sample/chrom ampl dists and sample ampl properties)
 
 import pandas as pd
 import numpy as np
@@ -386,14 +386,15 @@ class SamplePSD(object):
 
             Inputs:
                 chrom_list: list of chromosomes
+                method: method for curve-fitting
         """
         if not hasattr(self, 'chrom_curves'):
             print("Fitting chromosome curves.")
-            self.chrom_curves(chrom_list)
+            self.fit_chrom_curves(chrom_list)
 
         if not hasattr(self, 'sample_curves'):
             print("Fitting sample curves.")
-            self.sample_curves(sample_list)
+            self.fit_sample_curves()
 
         kl_div = self.KL_div_by_chrom()
         samp_fit = self.sample_curves['avg']
@@ -455,6 +456,24 @@ class SamplePSD(object):
 
         return cl
 
+    def infer_chrom_amplicon_dist(self, chrom_list, method='erf'):
+        """ Infer the amplicon distribution for each chromosome.
+        """
+        if not hasattr(self, 'chrom_curves'):
+            print("Fitting chromosome curves.")
+            self.fit_chrom_curves(chrom_list)
+
+        if not hasattr(self, 'sample_curves'):
+            print("Fitting sample curves.")
+            self.fit_sample_curves()
+
+        dist = {}
+        for chrom in chrom_list:
+            pdf, freq = self.ampl.amplicon_dist(popt=self.chrom_popts[chrom], method=method)
+            dist[chrom] = {'freq': freq, 'dist': pdf}
+
+        self.chrom_dist = dist
+
     def fit_sample_curves(self, method='erf'):
         """ Fit smooth curves to the sample avg PSD and 3 standard deviations above and below sample avg
 
@@ -489,6 +508,39 @@ class SamplePSD(object):
         }
 
         self.ampl = amp_samp
+
+    def calc_sample_props(self, method='erf'):
+        """ Calculate chromosome properties (KL div, sub amp var, supra amp var, min pos, 
+                                             median amp size, lower amp size, upper amp size)
+
+            Inputs:
+                chrom_list: list of chromosomes
+                method: method for curve-fitting
+        """
+        if not hasattr(self, 'sample_curves'):
+            print("Fitting sample curves.")
+            self.fit_sample_curves()
+
+        samp_popt = self.sample_popts['avg']
+        samp_fit = self.sample_curves['avg']
+        median, mean, lower, upper = self.ampl.amplicon_range(samp_popt, method=method)
+
+        self.sample_props = [median, mean, lower, upper]
+
+    def infer_sample_amplicon_dist(self, method='erf'):
+        """ Infer the sample amplicon distribution (wrapper for AmplDist.amplicon_dist)
+
+            Input:
+                method: curve-fitting method
+        """
+        if not hasattr(self, 'sample_curves'):
+            print("Fitting sample curves.")
+            self.fit_sample_curves()
+
+        pdf = self.ampl.amplicon_dist(method=method)
+        self.sample_dist = {'freq': self.ampl.freq['dist'],
+                            'dist': pdf
+        }
 
     def save(self, f_out):
         """ Save the sample's PSD dataframe

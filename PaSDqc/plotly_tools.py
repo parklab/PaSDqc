@@ -1,7 +1,7 @@
 # plotly_tools.py - methods for easy plotly plot creation
 #
-# v 1.0.12 (revision1)
-# rev 2017-09-11 (MS: Better labels for chom outlier plots)
+# v 1.0.13 (revision2)
+# rev 2017-11-26 (MS: updated amplicon_density_plot to take SamplePSD objects)
 # Notes:
 
 import numpy as np
@@ -74,8 +74,10 @@ def PSD_plot(freq, nd, sample_list, bulk='bulk_1x.smooth3.spec'):
 
     return fig
 
-def amplicon_density_plot(amp_list, pdf_list, sample_list):
-    data = [go.Scatter(x=amp.freq['dist'], y=pdf, mode='lines', text=s, name=s) for amp, pdf, s in zip(amp_list, pdf_list, sample_list)] 
+# def amplicon_density_plot(amp_list, pdf_list, sample_list):
+def amplicon_density_plot(psd_list, sample_list):
+    data = [go.Scatter(x=psd.sample_dist['freq'], y=psd.sample_dist['dist'], mode='lines', text=s, name=s) for psd, s in zip(psd_list, sample_list)]
+    # data = [go.Scatter(x=amp.freq['dist'], y=pdf, mode='lines', text=s, name=s) for amp, pdf, s in zip(amp_list, pdf_list, sample_list)] 
     # data = [go.Scatter(x=distances, y=pdf, mode='lines', text=s, name=s) for pdf, s in zip(pdf_list, sample_list)] 
     layout = go.Layout(
         hovermode='closest',

@@ -1,7 +1,7 @@
 # amplicon.py - classes for fitting amplicon distributions from PSDs
 #
-# v 1.0.12 (rev2)
-# rev 2017-11-25 (MS: amplicon_range and amplicon_dist can now be used as static methods)
+# v 1.0.13 (rev2)
+# rev 2017-11-26 (MS: minor update to staticmethod behavior of AmplDist.amplicon_dist())
 # Notes:
 
 import scipy.optimize
@@ -306,9 +306,9 @@ class AmplDist(object):
         """
         store = False
         if popt is None:
+            store = True
             if self.success:
                 popt = self.popt[method]
-                store = True
 
         if popt is not None:
             # popt = self.popt[method]
@@ -332,8 +332,9 @@ class AmplDist(object):
 
         if store:
             self.freq['dist'] = 10**vals
-
-        return pdf
+            return pdf
+        else:
+            return pdf, 10**vals
 
     @staticmethod
     def param_names(method):

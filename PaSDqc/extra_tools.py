@@ -1,7 +1,7 @@
 # PSDTools.py - classes for MDAqc Power Spectral Density calculations
 #
-# v 0.1.12 (rev2)
-# rev 2017-11-25 (MS: methods to summarize chrom classification)
+# v 0.1.13 (rev2)
+# rev 2017-11-26 (MS: methods to summarize sample amplicon props)
 # Notes:
 
 import pandas as pd
@@ -129,6 +129,21 @@ def summarize_chrom_classif_by_type(df_stat):
     df.index = df_stat.index
 
     return df
+
+def summarize_sample_props(psd_list, sample_list):
+    """ Summarize sample amplicon properties (median, mean, lower, and upper sizes)
+
+        Inputs:
+            psd_list: list of SamplePSD AFTER calc_sample_props() has been run
+            sample_list: list of samples in same order as psd_list
+
+        Returns:
+            data frame where rows are samples, columns are property, and entries are the values
+    """
+    prop_list = [psd.sample_props for psd in psd_list]
+    cols = ['amplicon median', 'mean size', 'lower size', 'upper size']
+
+    return pd.DataFrame(prop_list, columns=cols, index=sample_list)
 
 def plot_KL_div_by_chrom(j):
     """ Plot KL divergence by chrom for grch37 sample
