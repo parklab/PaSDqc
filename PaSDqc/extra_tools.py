@@ -1,7 +1,7 @@
 # PSDTools.py - classes for MDAqc Power Spectral Density calculations
 #
-# v 0.1.13 (rev2)
-# rev 2017-11-26 (MS: methods to summarize sample amplicon props)
+# v 0.1.14 (rev2)
+# rev 2017-11-26 (MS: plot chromosome classification matrix)
 # Notes:
 
 import pandas as pd
@@ -9,6 +9,7 @@ import numpy as np
 import astropy.stats
 import statsmodels.nonparametric
 import matplotlib.pyplot as plt
+import matplotlib.colors
 import seaborn as sns
 import re
 import pathlib
@@ -182,6 +183,55 @@ def plot_KL_div_by_chrom(j):
     ax.xaxis.set_ticklabels(chroms)
 
     return f
+
+def plot_chrom_classification(df_status, ax=None, add_cbar=True, cbar_ax=None):
+    """ Plot chromosome classification matrix
+
+        Inputs:
+            df_status: dataframe of chromosome classifications as produce by summarize_chrom_classif_by_sample
+            ax: axis to plot matrix to
+            add_cbar: add a colobar?
+            cbar_ax: axis for colorbar.
+    """
+    df = df_status.copy()
+    df.replace('Pass', 0, inplace=True)
+    df.replace('Possible loss', 1, inplace=True)
+    df.replace('Possible gain', 2, inplace=True)
+    df.replace('Fail', 3, inplace=True)
+
+    cp = sns.color_palette()
+    c_loss, c_neut, c_gain = sns.diverging_palette(255, 133, l=60, n=3)
+    cmap = matplotlib.colors.ListedColormap([c_neut, c_loss, c_gain, cp[2]])
+
+    if not ax:
+        f = plt.figure()
+        ax = f.add_subplot(111)
+
+    nd = df.as_matrix()
+
+    cax = ax.imshow(nd, aspect='equal', cmap=cmap, interpolation=None, vmin=0, vmax=3)# , vmax=1, vmin=-1)
+    ax.set_yticks(np.arange(0, df.shape[0]))
+    ax.set_xticks(np.arange(0, df.shape[1]))
+    ax.set_xticks(np.arange(0.5, df.shape[1]+0.5), minor=True)
+
+    for y in np.arange(0.5, df.shape[0], 1):
+        ax.axhline(y, linestyle='--', color='black', linewidth=1)
+    
+    ax.set_yticklabels([s.replace('_', '') for s in df.index])
+    ax.set_xticklabels(df.columns);
+    ax.grid(which='minor', color='black', linewidth=1)
+    ax.set_xlabel('chromosome')
+    
+    #colorbar
+    if add_cbar:
+        cbar = ax.figure.colorbar(cax, ticks=[0.375, 0.75+0.375, 1.5+0.375, 2.25+0.375], cax=cbar_ax, orientation='horizontal')
+        cbar.ax.set_xticklabels(['Pass', 'Pos. Loss', 'Pos. Gain', 'Fail'])
+        cbar.ax.xaxis.tick_top()
+        cbar.ax.tick_params(axis='x', which='major', pad=0)
+        for y in [0.25, 0.5, 0.75]:
+            cbar.ax.axvline(y, color='black', linewidth=1)
+            
+    return f, ax
 
 def PSD_to_ACF(freq, psd, lags):
     """ Convert PSD to ACF using the Wiener-Khinchin theorem.
