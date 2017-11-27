@@ -1,7 +1,7 @@
 # PSDTools.py - classes for MDAqc Power Spectral Density calculations
 #
-# v 1.0.14 (revision1)
-# rev 2017-09-11 (MS: class for sub-chrom region outlier detection)
+# v 1.0.22 (revision2)
+# rev 2017-11-27 (MS: minor bug fixes)
 
 import pandas as pd
 import numpy as np
@@ -14,6 +14,7 @@ import pathlib
 import os
 
 from . import extra_tools
+from . import amplicon
 
 class ChromPSD(object):
     """ Lombe-Scargle PSD estimation for a single Chromosome
@@ -235,6 +236,7 @@ class SamplePSD(object):
         Attributes:
             name        name of sample
             df          data frame containing position and depth information for the chromosome
+            freq        array of frequencies of PSD
     """
 
     # name = None
@@ -243,6 +245,7 @@ class SamplePSD(object):
     def __init__(self, df, name):
         self.name = name
         self.df = df
+        self.freq = np.array(df.index.tolist())
 
     @classmethod
     def build_from_dir(cls, d_path, sample=None, clean=False, build='grch37'):
@@ -323,6 +326,10 @@ class SamplePSD(object):
 
         return df
 
+    @classmethod
+    def load_from_file(cls, f, name):
+        return cls(pd.read_table(f, index_col=0), name=name)
+
     # def avg_PSD(self, f_chrom_sizes):
     def avg_PSD(self):
         """ Calculate median of chromosomal PSDs
@@ -353,6 +360,192 @@ class SamplePSD(object):
 
         return j
 
+    def fit_chrom_curves(self, chrom_list, method='erf'):
+        """ Fit smooth curves to each chromosome
+
+            Inputs:
+                chrom_list: list of chromosomes for which to estimate PSD
+                method: curve fitting method (default: erf)
+        """
+        fits = {}
+        popts = {}
+
+        for chrom in chrom_list:
+            psd_chrom = self.df.loc[:, chrom]
+            amp_chrom = amplicon.AmplDist(self.freq, psd_chrom)
+            amp_chrom.fit_curve(method=method)
+            chrom_fit = amp_chrom.predict_vals(method=method)
+
+            fits[chrom] = chrom_fit
+            popts[chrom] = amp_chrom.popt[method]
+
+        fits['period'] =  10**amp_chrom.freq[method]
+
+        self.chrom_curves = fits
+        self.chrom_popts = popts
+
+    def calc_chrom_props(self, chrom_list, method='erf'):
+        """ Calculate chromosome properties (KL div, sub amp var, supra amp var, min pos, 
+                                             median amp size, lower amp size, upper amp size)
+
+            Inputs:
+                chrom_list: list of chromosomes
+                method: method for curve-fitting
+        """
+        if not hasattr(self, 'chrom_curves'):
+            print("Fitting chromosome curves.")
+            self.fit_chrom_curves(chrom_list)
+
+        if not hasattr(self, 'sample_curves'):
+            print("Fitting sample curves.")
+            self.fit_sample_curves()
+
+        kl_div = self.KL_div_by_chrom()
+        samp_fit = self.sample_curves['avg']
+
+        chrom_prop_list = []
+
+        for chrom in chrom_list:
+            # psd_chrom = PaSDqc.PSDTools.normalize_psd(psd.df.loc[:, chrom])
+            # amp_chrom = PaSDqc.amplicon.AmplDist(freq, psd.df.loc[:, chrom])
+            # amp_chrom.fit_curve()
+            # chrom_fit = amp_chrom.func_erf(amp_chrom.freq['erf'], *amp_chrom.popt['erf'][0:4])
+            chrom_popt = self.chrom_popts[chrom]
+            chrom_fit = self.chrom_curves[chrom]
+        
+            # sub, supra = sub_supra_var(amp_chrom.popt['erf'])
+            # median, mean, SD = mean_var_logNorm(amp_chrom.popt['erf'])
+            sub = chrom_fit[-1]
+            supra = chrom_fit[0]
+            median, mean, lower, upper = self.ampl.amplicon_range(chrom_popt, method=method)
+            min_pos = (np.abs(chrom_fit[::-1] - samp_fit[::-1])).argmin()
+            kl = kl_div[chrom]
+            cl = self._classify_chrom(chrom, kl_div)
+        
+            chrom_props = [kl, sub, supra, min_pos, int(median), int(mean), int(lower), int(upper), cl]
+        
+            # psd_chrom_list.append(psd_chrom)
+            # amp_list.append(amp_chrom)
+            # curve_list.append(chrom_fit)
+            chrom_prop_list.append(chrom_props)
+            
+        self.chrom_props =  pd.DataFrame(chrom_prop_list, columns=['KL', 'sub', 'supra', 'min_pos', 'median', 'mean', 'lower', 'upper', 'classif'], index=chrom_list)
+
+    def _classify_chrom(self, chrom, kl_div):
+        kl = kl_div[chrom]
+        mu = kl_div.median()
+        mad = np.median(np.abs(kl_div - mu))
+        cutoff = mu + 2*mad
+        chroms_out = kl_div[kl_div>cutoff].index
+
+        sample_fit = self.sample_curves['avg']
+        sample_upper = self.sample_curves['upper']
+        sample_lower = self.sample_curves['lower']
+        sample_popt = self.sample_popts['avg']
+
+        chr_popts = self.chrom_popts[chrom]
+        chr_fit = self.chrom_curves[chrom]
+
+        min_pos = (np.abs(chr_fit[::-1] - sample_fit[::-1])).argmin()
+            
+        if ((chr_fit > sample_upper).all()) & (min_pos == 0) & (np.abs(chr_popts[-1] - sample_popt[-1]) < 0.065):
+            cl = 'Possible gain'
+        elif ((chr_fit < sample_lower).all()) & (min_pos == 0) & (np.abs(chr_popts[-1] - sample_popt[-1]) < 0.065):
+            cl = 'Possible loss'
+        elif chrom in chroms_out:
+                cl = 'Fail'
+
+        else:
+            cl = 'Pass'
+
+        return cl
+
+    def infer_chrom_amplicon_dist(self, chrom_list, method='erf'):
+        """ Infer the amplicon distribution for each chromosome.
+        """
+        if not hasattr(self, 'chrom_curves'):
+            print("Fitting chromosome curves.")
+            self.fit_chrom_curves(chrom_list)
+
+        if not hasattr(self, 'sample_curves'):
+            print("Fitting sample curves.")
+            self.fit_sample_curves()
+
+        dist = {}
+        for chrom in chrom_list:
+            pdf, freq = self.ampl.amplicon_dist(popt=self.chrom_popts[chrom], method=method)
+            dist[chrom] = {'freq': freq, 'dist': pdf}
+
+        self.chrom_dist = dist
+
+    def fit_sample_curves(self, method='erf'):
+        """ Fit smooth curves to the sample avg PSD and 3 standard deviations above and below sample avg
+
+            Inputs:
+                method: curve fitting method (default: erf)
+        """
+        samp_avg = self.avg_PSD()
+        se = self.df.std(axis=1) / np.sqrt(22)
+        samp_lower = np.abs(samp_avg - 3 * se)
+        samp_upper = samp_avg + 3 * se
+
+        amp_samp = amplicon.AmplDist(self.freq, samp_avg)
+        amp_samp.fit_curve()
+        samp_fit = amp_samp.predict_vals(method=method)
+
+        amp_samp_lower = amplicon.AmplDist(self.freq, samp_lower)
+        amp_samp_lower.fit_curve()
+        samp_fit_lower = amp_samp_lower.predict_vals(method=method)
+
+        amp_samp_upper = amplicon.AmplDist(self.freq, samp_upper)
+        amp_samp_upper.fit_curve()
+        samp_fit_upper = amp_samp_upper.predict_vals(method=method)
+        
+        self.sample_curves = {'period': 10**amp_samp.freq[method],
+                           'avg': samp_fit,
+                           'lower': samp_fit_lower,
+                           'upper': samp_fit_upper
+        }
+        self.sample_popts = {'avg': amp_samp.popt[method],
+                            'lower': amp_samp_lower.popt[method],
+                            'upper': amp_samp_upper.popt[method]
+        }
+
+        self.ampl = amp_samp
+
+    def calc_sample_props(self, method='erf'):
+        """ Calculate chromosome properties (KL div, sub amp var, supra amp var, min pos, 
+                                             median amp size, lower amp size, upper amp size)
+
+            Inputs:
+                chrom_list: list of chromosomes
+                method: method for curve-fitting
+        """
+        if not hasattr(self, 'sample_curves'):
+            print("Fitting sample curves.")
+            self.fit_sample_curves()
+
+        samp_popt = self.sample_popts['avg']
+        samp_fit = self.sample_curves['avg']
+        median, mean, lower, upper = self.ampl.amplicon_range(samp_popt, method=method)
+
+        self.sample_props = [int(median), int(mean), int(lower), int(upper)]
+
+    def infer_sample_amplicon_dist(self, method='erf'):
+        """ Infer the sample amplicon distribution (wrapper for AmplDist.amplicon_dist)
+
+            Input:
+                method: curve-fitting method
+        """
+        if not hasattr(self, 'sample_curves'):
+            print("Fitting sample curves.")
+            self.fit_sample_curves()
+
+        pdf = self.ampl.amplicon_dist(method=method)
+        self.sample_dist = {'freq': self.ampl.freq['dist'],
+                            'dist': pdf
+        }
+
     def save(self, f_out):
         """ Save the sample's PSD dataframe
 
@@ -373,7 +566,7 @@ class RegionPSD(object):
         self.regions = region_dict
 
     @classmethod
-    def analyze(cls, d_path, sample=None, clean=False, build='grch37'):
+    def analyze(cls, d_path, sample=None, clean=False, build='grch37', l_region=1e7, l_seg=5e3, min_freq=1e-5):
         """ Build SamplePSD object from a directory of .cov files
 
             Args:
@@ -401,12 +594,12 @@ class RegionPSD(object):
         return cls(regions, name)
 
     @staticmethod
-    def _build_region_dict(file_list, build, l_region=1e7, l_seg=5e5):
+    def _build_region_dict(file_list, build, l_region=1e7, l_seg=5e5, min_freq=1e-5):
         f_cent = extra_tools.get_data_file("{}.centromeres.bed".format(build))
         df_cent = pd.read_table(f_cent, names=['start', 'end'], index_col=0)
 
         freq_tmp = np.linspace(1e-6, 5e-3, 8000)
-        freq = freq_tmp[freq_tmp<=5e-3] 
+        freq = freq_tmp[freq_tmp>=min_freq] 
 
         regions = {}
 
@@ -418,7 +611,6 @@ class RegionPSD(object):
             chrom = str(df.chrom.iloc[0])
             cent_start = df_cent.loc[chrom, :].start
             cent_end = df_cent.loc[chrom, :].end
-            print(cent_start, cent_end)
 
             df_p = df[df.pos < cent_start]
             df_q = df[df.pos > cent_end]
@@ -457,9 +649,7 @@ class RegionPSD(object):
         region_blacklist = []
 
         for start, end in zip(starts, ends):
-            print(start, end)
             df_tmp = df.loc[(df.pos>=start)&(df.pos<end), :]
-            print(df_tmp.shape)
 
             if df_tmp.shape[0]:
                 pwr, count = ChromPSD.PSD_LS_manual(df_tmp, freq, l_seg, avg_fnc=np.mean)
@@ -469,10 +659,6 @@ class RegionPSD(object):
 
             else:
                 region_blacklist.append([start, end])
-
-        # columns = [str(region[0]) for region in region_list]
-        # df_psd = pd.DataFrame(np.array(psd_list).T, columns=columns, index=freq)
-        # psdtool = PaSDqc.PSDTools.SamplePSD(df_psd, name=chrom_name)
 
         return psd_list, region_list
 

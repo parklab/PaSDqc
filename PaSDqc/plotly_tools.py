@@ -1,7 +1,7 @@
 # plotly_tools.py - methods for easy plotly plot creation
 #
-# v 1.0.12 (revision1)
-# rev 2017-09-11 (MS: Better labels for chom outlier plots)
+# v 1.0.14 (revision2)
+# rev 2017-11-26 (MS: updated chrom_KL_plot to plot copy gains / losses)
 # Notes:
 
 import numpy as np
@@ -74,8 +74,10 @@ def PSD_plot(freq, nd, sample_list, bulk='bulk_1x.smooth3.spec'):
 
     return fig
 
-def amplicon_density_plot(amp_list, pdf_list, sample_list):
-    data = [go.Scatter(x=amp.freq['dist'], y=pdf, mode='lines', text=s, name=s) for amp, pdf, s in zip(amp_list, pdf_list, sample_list)] 
+# def amplicon_density_plot(amp_list, pdf_list, sample_list):
+def amplicon_density_plot(psd_list, sample_list):
+    data = [go.Scatter(x=psd.sample_dist['freq'], y=psd.sample_dist['dist'], mode='lines', text=s, name=s) for psd, s in zip(psd_list, sample_list)]
+    # data = [go.Scatter(x=amp.freq['dist'], y=pdf, mode='lines', text=s, name=s) for amp, pdf, s in zip(amp_list, pdf_list, sample_list)] 
     # data = [go.Scatter(x=distances, y=pdf, mode='lines', text=s, name=s) for pdf, s in zip(pdf_list, sample_list)] 
     layout = go.Layout(
         hovermode='closest',
@@ -128,25 +130,32 @@ def ACF_plot(lags, nd, sample_list):
 
     return fig
 
-def chrom_KL_plot(j_list, sample_list):
+# def chrom_KL_plot(j_list, sample_list):
+def chrom_KL_plot(psd_list, sample_list):
     # xticks and point labels
-    j = j_list[0]
-    chroms = j.index.tolist()
-    text = [c for c in chroms]
-    # chroms[-2:] = ['23', '24']
-    chroms = pd.Series([int(c) for c in chroms], index=j.index)
-    text = pd.Series(text, index=j.index)
+    chroms = psd_list[0].chrom_props.index
+    text = pd.Series(chroms.tolist(), index=chroms)
+    ticks = list(range(1, len(chroms)+1))
+    x_pos = pd.Series(ticks, index=chroms)
 
-    ticks = sorted(chroms)
-    tick_labs = [t for t in ticks]
-    # tick_labs[-2:] = ['X', 'Y']
-    tick_labs = [str(c) for c in tick_labs]
+    # j = j_list[0]
+    # chroms = j.index.tolist()
+    # text = [c for c in chroms]
+    # # chroms[-2:] = ['23', '24']
+    # chroms = pd.Series([int(c) for c in chroms], index=j.index)
+    # text = pd.Series(text, index=j.index)
+
+    # ticks = sorted(chroms)
+    # tick_labs = [t for t in ticks]
+    # # tick_labs[-2:] = ['X', 'Y']
+    # tick_labs = [str(c) for c in tick_labs]
 
     data = []
     s_list = []
 
-    for j, sample in zip(j_list, sample_list):
-        d_tmp, s_tmp = _chrom_trace(j, sample, chroms, text)
+    # for j, sample in zip(j_list, sample_list):
+    for psd, sample in zip(psd_list, sample_list):
+        d_tmp, s_tmp = _chrom_trace(psd, sample, x_pos, text)
 
         data.extend(d_tmp)
         s_list.extend(s_tmp)
@@ -171,7 +180,7 @@ def chrom_KL_plot(j_list, sample_list):
                   height=800,
                   font=dict(size=18),
                   xaxis = dict(tickmode='array',
-                               ticktext=tick_labs,
+                               ticktext=text.tolist(),
                                tickvals=ticks
                           ),
                   updatemenus = update_menus
@@ -181,36 +190,53 @@ def chrom_KL_plot(j_list, sample_list):
 
     return fig
 
-def _chrom_trace(j, sample, chroms, text):
-    mu = j.median()
-    mad = np.median(np.abs(j-mu))
-    sd_1 = mu + mad
-    sd_2 = mu + 2*mad
+# def _chrom_trace(j, sample, chroms, text):
+def _chrom_trace(psd, sample, x_pos, text):
+    # mu = j.median()
+    # mad = np.median(np.abs(j-mu))
+    # sd_1 = mu + mad
+    # sd_2 = mu + 2*mad
+    df = psd.chrom_props
 
-    trace0 = go.Scatter(x=chroms[j <= sd_1], 
-                        y=j[j <= sd_1], 
+    # Passing
+    trace0 = go.Scatter(x=x_pos[df.classif == 'Pass'], 
+                        y=df.KL[df.classif == 'Pass'], 
                         mode='markers', 
-                        marker=dict(color='blue', size=10), 
+                        marker=dict(color='grey', size=10), 
                         name='pass', 
                         text=sample
                         # text=text[j <= sd_1]
              )
-    trace1 = go.Scatter(x=chroms[(j > sd_1) & (j <= sd_2)], 
-                        y=j[(j > sd_1) & (j <= sd_2)],
+    # Gains
+    trace1 = go.Scatter(x=x_pos[df.classif == 'Possible gain'], 
+                        y=df.KL[df.classif == 'Possible gain'],
                         mode='markers', 
-                        marker=dict(color='orange', size=10), 
-                        name='warn',
+                        marker=dict(color='green', size=10), 
+                        name='Gain?',
                         text=sample
              )
-    trace2 = go.Scatter(x=chroms[j > sd_2], 
-                        y=j[j > sd_2], mode='markers', 
+    # Losses
+    trace2 = go.Scatter(x=x_pos[df.classif == 'Possible loss'],
+                        y=df.KL[df.classif == 'Possible loss'], 
+                        mode='markers', 
+                        marker=dict(color='blue', size=10), 
+                        name='Loss?', 
+                        text=sample
+                        # text=text[j > sd_2]
+                       )
+    # Fails
+    trace3 = go.Scatter(x=x_pos[df.classif == 'Fail'],
+                        y=df.KL[df.classif == 'Fail'], 
+                        mode='markers', 
                         marker=dict(color='red', size=10), 
-                        name='fail', 
+                        name='Fail', 
                         text=sample
                         # text=text[j > sd_2]
                        )
 
-    data = [trace0, trace1, trace2]
+    # data = [trace0, trace1, trace2]
+
+    data = [trace0, trace1, trace2, trace3]
     s_list = [sample for trace in data]
 
     return data, s_list

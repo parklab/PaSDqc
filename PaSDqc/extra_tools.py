@@ -1,14 +1,15 @@
 # PSDTools.py - classes for MDAqc Power Spectral Density calculations
 #
-# v 0.1.11 (revision1)
-# rev 2017-09-11 (MS: fixed API for plotting chrom KL divergences)
-# Notes: method to load bulk PSD
+# v 1.0.20 (rev2)
+# rev 2017-11-27 (MS: minor bug fixes)
+# Notes:
 
 import pandas as pd
 import numpy as np
 import astropy.stats
 import statsmodels.nonparametric
 import matplotlib.pyplot as plt
+import matplotlib.colors
 import seaborn as sns
 import re
 import pathlib
@@ -55,7 +56,8 @@ def chroms_from_build(build):
         Returns:
             chrom_list      list
     """
-    chroms = {'grch37': [i for i in range(1, 23)],
+    chroms = {'grch37': [str(i) for i in range(1, 23)],
+              'hg19': ['chr{}'.format(i) for i in range(1, 23)]
     # chroms = {'grch37': [i for i in range(1, 23)] + ['X', 'Y'],
     }
 
@@ -86,7 +88,64 @@ def summarize_KL_div_by_chrom(j_list, sample_list):
 
     return df
 
-def plot_KL_div_by_chrom(j):
+def summarize_chrom_classif_by_sample(psd_list, sample_list):
+    """ Summarize chromosome classification by sample
+
+        Inputs:
+            psd_list: list of SamplePSD AFTER calc_chrom_props() has been run
+            sample_list: list of samples in same order as psd_list
+
+        Returns:
+            data frame where rows are samples, columns are chromosomes, and entries are the classification
+    """
+    cl_list = [psd.chrom_props.classif for psd in psd_list]
+    cols = psd_list[0].chrom_props.index
+    df_stat = pd.DataFrame(cl_list, columns=cols, index=sample_list)
+
+    return df_stat
+
+def summarize_chrom_classif_by_type(df_stat):
+    """ Summarize chrom classification by type after summarizing by sample
+
+        Inputs:
+            df_stat: dataframe produced by summarize_chrom_classif_by_sample()
+
+        Outputs:
+            dataframe where rows are samples and columns are chromsomes grouped by classification
+    """
+    chrom_pass = []
+    chrom_fail = []
+    chrom_gain = []
+    chrom_loss = []
+
+    for sample, row in df_stat.iterrows():
+        chrom_pass.append(row[row=='Pass'].index.tolist())
+        chrom_fail.append(row[row=='Fail'].index.tolist())
+        chrom_gain.append(row[row=='Possible gain'].index.tolist())
+        chrom_loss.append(row[row=='Possible loss'].index.tolist())
+
+    cols = ['Chrom: pass', 'Chrom: gain?', 'Chrom: loss?', 'Chrom: fail']
+    df = pd.DataFrame.from_items(zip(cols, [chrom_pass, chrom_gain, chrom_loss, chrom_fail]))
+    df.index = df_stat.index
+
+    return df
+
+def summarize_sample_props(psd_list, sample_list):
+    """ Summarize sample amplicon properties (median, mean, lower, and upper sizes)
+
+        Inputs:
+            psd_list: list of SamplePSD AFTER calc_sample_props() has been run
+            sample_list: list of samples in same order as psd_list
+
+        Returns:
+            data frame where rows are samples, columns are property, and entries are the values
+    """
+    prop_list = [psd.sample_props for psd in psd_list]
+    cols = ['amplicon median', 'mean size', 'lower size', 'upper size']
+
+    return pd.DataFrame(prop_list, columns=cols, index=sample_list)
+
+def plot_KL_div_by_chrom(j, ax=None):
     """ Plot KL divergence by chrom for grch37 sample
 
         Args:
@@ -95,34 +154,81 @@ def plot_KL_div_by_chrom(j):
         Returns:
             f       matplotlib figure
     """
-    f = plt.figure()
-    ax = f.add_subplot(111)
+    if not ax:
+        f = plt.figure()
+        ax = f.add_subplot(111)
 
     mu = j.median()
     mad = np.median(np.abs(j - mu))
-    # sd_1 = mu + mad
+    sd_1 = mu + mad
     sd_2 = mu + 2 * mad
 
     chroms = j.index.tolist()
-    # chroms[-2:] = ['23', '24']
     chroms = [int(c) for c in chroms]
     chroms = pd.Series(chroms)
 
+    cp = sns.color_palette()
     ax.plot(chroms[(j <= (sd_2)).tolist()], j[j <= (sd_2)], 'o', label='Pass')
-    # ax.plot(chroms[((j > sd_1) & (j <= sd_2)).tolist()], j[(j > sd_1) & (j <= sd_2)], 'o', label='Warn', color='orange')
-    ax.plot(chroms[(j > (sd_2)).tolist()], j[j > (sd_2)], 'o', label='Fail', color='red')
-    # ax.plot(sorted(chroms), [sd_1 for i in range(len(chroms))], '--', label='one std')
-    ax.plot(sorted(chroms), [sd_2 for i in range(len(chroms))], '--', label='two std')
-    ax.legend(loc='upper left')
+    ax.plot(chroms[(j > (sd_2)).tolist()], j[j > (sd_2)], 'o', label='Aberrant', color=cp[2])
+    ax.plot(sorted(chroms), [sd_2 for i in range(len(chroms))], '--', color='black')
+    ax.legend(bbox_to_anchor=(0, 1, 0.3, 0.2), loc=(0, 0), ncol=2, mode='expand', borderaxespad=0.)
     ax.set_xlabel('chromosome')
-    ax.set_ylabel('Symmetric KL Divergence')
+    ax.set_ylabel('KL Divergence')
 
     chroms = sorted(chroms)
     ax.xaxis.set_ticks(chroms)
-    # chroms[-2:] = ['X', 'Y']
     ax.xaxis.set_ticklabels(chroms)
 
-    return f
+    return ax
+
+def plot_chrom_classification(df_status, ax=None, add_cbar=True, cbar_ax=None):
+    """ Plot chromosome classification matrix
+
+        Inputs:
+            df_status: dataframe of chromosome classifications as produce by summarize_chrom_classif_by_sample
+            ax: axis to plot matrix to
+            add_cbar: add a colobar?
+            cbar_ax: axis for colorbar.
+    """
+    df = df_status.copy()
+    df.replace('Pass', 0, inplace=True)
+    df.replace('Possible loss', 1, inplace=True)
+    df.replace('Possible gain', 2, inplace=True)
+    df.replace('Fail', 3, inplace=True)
+
+    cp = sns.color_palette()
+    c_loss, c_neut, c_gain = sns.diverging_palette(255, 133, l=60, n=3)
+    cmap = matplotlib.colors.ListedColormap([c_neut, c_loss, c_gain, cp[2]])
+
+    if not ax:
+        f = plt.figure()
+        ax = f.add_subplot(111)
+
+    nd = df.as_matrix()
+
+    cax = ax.imshow(nd, aspect='equal', cmap=cmap, interpolation=None, vmin=0, vmax=3)# , vmax=1, vmin=-1)
+    ax.set_yticks(np.arange(0, df.shape[0]))
+    ax.set_xticks(np.arange(0, df.shape[1]))
+    ax.set_xticks(np.arange(0.5, df.shape[1]+0.5), minor=True)
+
+    for y in np.arange(0.5, df.shape[0], 1):
+        ax.axhline(y, linestyle='--', color='black', linewidth=1)
+    
+    ax.set_yticklabels([s.replace('_', '') for s in df.index])
+    ax.set_xticklabels(df.columns);
+    ax.grid(which='minor', color='black', linewidth=1)
+    ax.set_xlabel('chromosome')
+    
+    #colorbar
+    if add_cbar:
+        cbar = ax.figure.colorbar(cax, ticks=[0.375, 0.75+0.375, 1.5+0.375, 2.25+0.375], cax=cbar_ax, orientation='horizontal')
+        cbar.ax.set_xticklabels(['Pass', 'Pos. Loss', 'Pos. Gain', 'Fail'])
+        cbar.ax.xaxis.tick_top()
+        cbar.ax.tick_params(axis='x', which='major', pad=0)
+        for y in [0.25, 0.5, 0.75]:
+            cbar.ax.axvline(y, color='black', linewidth=1)
+            
+    return ax
 
 def PSD_to_ACF(freq, psd, lags):
     """ Convert PSD to ACF using the Wiener-Khinchin theorem.

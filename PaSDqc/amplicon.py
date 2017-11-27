@@ -1,7 +1,7 @@
 # amplicon.py - classes for fitting amplicon distributions from PSDs
 #
-# v 1.0.10
-# rev 2017-07-26 (MS: more robust curve fitting)
+# v 1.0.13 (rev2)
+# rev 2017-11-26 (MS: minor update to staticmethod behavior of AmplDist.amplicon_dist())
 # Notes:
 
 import scipy.optimize
@@ -227,44 +227,91 @@ class AmplDist(object):
         else:
             vals = self.freq[method]
 
-        return fit_fnc(vals, *self.popt[method])
+        return fit_fnc(vals, *self.popt[method][:-1])
 
-    def amplicon_range(self, method='erf'):
-        """ Calculate mean and 95% upper and lower bounds on amplicon sizes using logistic fit
+    # def amplicon_range(self, method='erf'):
+    def amplicon_range(self, popt=None, method='erf'):
+        """ Calculate mean and 95% upper and lower bounds on amplicon sizes
+
+            Input:
+                popt: params of fitted curve (optional. If not supplied, uses class popt)
+                method: curve-fitting method
         """
+        if popt is None:
+            if self.success:
+                popt = self.popt[method]
 
-        if self.success:
-            popt = self.popt[method]
+        # if self.success:
+        if popt is not None:
+            # popt = self.popt[method]
             shift = popt[-1]
 
             if method == 'erf':
                 dist = scipy.stats.norm(loc=popt[2], scale=popt[3])
+                x = dist.rvs(size=100000)
+                x_scale = 10**(x + shift)
+                mean = np.exp(np.log(10)*popt[2] + 0.5 * np.log(10)**2 * popt[3]**2)
+                median = np.exp(np.log(10)*popt[2])
+                # self.mean = np.exp(np.log(10)*popt[2] + 0.5 * np.log(10)**2 * popt[3]**2)
+                # self.median = np.exp(np.log(10)*popt[2])
+
             elif method == 'logis':
                 dist = scipy.stats.logistic(loc=popt[2], scale=popt[3])
+                x = dist.rvs(size=100000)
+                x_scale = 10**(x + shift)
+                mean = np.mean(x_scale)
+                median = np.median(x_scale)
+                # self.mean = np.mean(x_scale)
+                # self.median = np.median(x_scale)
+
             elif method == 'gamma':
                 dist = scipy.stats.gamma(a=popt[2], scale=1/popt[3])
+                x = dist.rvs(size=100000)
+                x_scale = 10**(x + shift)
+                mean = np.mean(x_scale)
+                median = np.median(x_scale)
+                # self.mean = np.mean(x_scale)
+                # self.median = np.median(x_scale)
 
-            x = dist.rvs(size=100000)
-            x_scale = 10**(x + shift)
-            self.mean = np.mean(x_scale)
-            self.median = np.median(x_scale)
-            self.lower_95 = np.percentile(x_scale, 5)
-            self.upper_95 = np.percentile(x_scale, 95)
+            # x = dist.rvs(size=100000)
+            # x_scale = 10**(x + shift)
+            # self.mean = np.mean(x_scale)
+            # self.median = np.median(x_scale)
+            lower_95 = np.percentile(x_scale, 5)
+            upper_95 = np.percentile(x_scale, 95)
+            # self.lower_95 = np.percentile(x_scale, 5)
+            # self.upper_95 = np.percentile(x_scale, 95)
 
         else:
             print('pass')
-            self.mean = 0
-            self.median = 0
-            self.lower_95 = 0
-            self.upper_95 = 0
+            mean = 0
+            median = 0
+            lower_95 = 0
+            upper_95 = 0
+            # self.mean = 0
+            # self.median = 0
+            # self.lower_95 = 0
+            # self.upper_95 = 0
 
-        return [self.median, self.mean, self.lower_95, self.upper_95]
+        return [median, mean, lower_95, upper_95]
+        # return [self.median, self.mean, self.lower_95, self.upper_95]
 
-    def amplicon_dist(self, method='erf'):
+    # def amplicon_dist(self, method='erf'):
+    def amplicon_dist(self, popt=None, method='erf'):
         """ Calculate the distribution of amplicon sizes based on a curve fit
+
+            Input:
+                popt: params of fitted curve (optional. If not supplied, uses class popt)
+                method: curve-fitting method
         """
-        if self.success:
-            popt = self.popt[method]
+        store = False
+        if popt is None:
+            store = True
+            if self.success:
+                popt = self.popt[method]
+
+        if popt is not None:
+            # popt = self.popt[method]
 
             if method == 'erf':
                 dist = scipy.stats.norm(loc=popt[2], scale=popt[3])
@@ -283,9 +330,11 @@ class AmplDist(object):
             pdf = np.zeros(100)
             vals = np.linspace(2, 6, 100)
 
-        self.freq['dist'] = 10**vals
-
-        return pdf
+        if store:
+            self.freq['dist'] = 10**vals
+            return pdf
+        else:
+            return pdf, 10**vals
 
     @staticmethod
     def param_names(method):
