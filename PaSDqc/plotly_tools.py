@@ -1,7 +1,7 @@
 # plotly_tools.py - methods for easy plotly plot creation
 #
-# v 1.0.14 (revision2)
-# rev 2017-11-26 (MS: updated chrom_KL_plot to plot copy gains / losses)
+# v 1.1.0a
+# rev 2017-11-27 (MS: minor)
 # Notes:
 
 import numpy as np
@@ -182,7 +182,9 @@ def chrom_KL_plot(psd_list, sample_list):
                   xaxis = dict(tickmode='array',
                                ticktext=text.tolist(),
                                tickvals=ticks
+                               title='Chromosome'
                           ),
+                  yaxis=dict(title='KL-divergence'),
                   updatemenus = update_menus
              )
 

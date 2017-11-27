@@ -1,6 +1,6 @@
 # report_writer.py - methods for writing html report
 #
-# v 1.1.0
+# v 1.1.0a
 # rev 2017-11-27 (MS: minor)
 # Notes:
 
@@ -28,7 +28,7 @@ def report_html(df_html, div_dend, div_psd, div_acf, div_chrom, div_amp):
         ''' + df_html + '''
         <h2>Sample Clustering</h2>
         ''' + div_dend + '''
-        <h2>Chromosome Outlier Plots</h2>
+        <h2>Chromosome Classification Plots</h2>
         ''' + div_chrom + '''
         <h2>Amplicon size distributions</h2>
         ''' + div_amp + '''
