@@ -1,7 +1,7 @@
 # PSDTools.py - classes for MDAqc Power Spectral Density calculations
 #
-# v 1.0.14 (revision2)
-# rev 2017-11-26 (MS: minor bug fixes)
+# v 1.0.22 (revision2)
+# rev 2017-11-27 (MS: minor bug fixes)
 
 import pandas as pd
 import numpy as np
@@ -326,6 +326,10 @@ class SamplePSD(object):
 
         return df
 
+    @classmethod
+    def load_from_file(cls, f, name):
+        return cls(pd.read_table(f, index_col=0), name=name)
+
     # def avg_PSD(self, f_chrom_sizes):
     def avg_PSD(self):
         """ Calculate median of chromosomal PSDs
@@ -562,7 +566,7 @@ class RegionPSD(object):
         self.regions = region_dict
 
     @classmethod
-    def analyze(cls, d_path, sample=None, clean=False, build='grch37'):
+    def analyze(cls, d_path, sample=None, clean=False, build='grch37', l_region=1e7, l_seg=5e3, min_freq=1e-5):
         """ Build SamplePSD object from a directory of .cov files
 
             Args:
@@ -590,12 +594,12 @@ class RegionPSD(object):
         return cls(regions, name)
 
     @staticmethod
-    def _build_region_dict(file_list, build, l_region=1e7, l_seg=5e5):
+    def _build_region_dict(file_list, build, l_region=1e7, l_seg=5e5, min_freq=1e-5):
         f_cent = extra_tools.get_data_file("{}.centromeres.bed".format(build))
         df_cent = pd.read_table(f_cent, names=['start', 'end'], index_col=0)
 
         freq_tmp = np.linspace(1e-6, 5e-3, 8000)
-        freq = freq_tmp[freq_tmp<=5e-3] 
+        freq = freq_tmp[freq_tmp>=min_freq] 
 
         regions = {}
 
@@ -607,7 +611,6 @@ class RegionPSD(object):
             chrom = str(df.chrom.iloc[0])
             cent_start = df_cent.loc[chrom, :].start
             cent_end = df_cent.loc[chrom, :].end
-            print(cent_start, cent_end)
 
             df_p = df[df.pos < cent_start]
             df_q = df[df.pos > cent_end]
@@ -646,9 +649,7 @@ class RegionPSD(object):
         region_blacklist = []
 
         for start, end in zip(starts, ends):
-            print(start, end)
             df_tmp = df.loc[(df.pos>=start)&(df.pos<end), :]
-            print(df_tmp.shape)
 
             if df_tmp.shape[0]:
                 pwr, count = ChromPSD.PSD_LS_manual(df_tmp, freq, l_seg, avg_fnc=np.mean)
@@ -658,10 +659,6 @@ class RegionPSD(object):
 
             else:
                 region_blacklist.append([start, end])
-
-        # columns = [str(region[0]) for region in region_list]
-        # df_psd = pd.DataFrame(np.array(psd_list).T, columns=columns, index=freq)
-        # psdtool = PaSDqc.PSDTools.SamplePSD(df_psd, name=chrom_name)
 
         return psd_list, region_list
 
