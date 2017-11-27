@@ -1,7 +1,7 @@
 # PSDTools.py - classes for MDAqc Power Spectral Density calculations
 #
-# v 0.1.15 (rev2)
-# rev 2017-11-26 (MS: minor bug fixes)
+# v 1.0.20 (rev2)
+# rev 2017-11-27 (MS: minor bug fixes)
 # Notes:
 
 import pandas as pd
@@ -145,7 +145,7 @@ def summarize_sample_props(psd_list, sample_list):
 
     return pd.DataFrame(prop_list, columns=cols, index=sample_list)
 
-def plot_KL_div_by_chrom(j):
+def plot_KL_div_by_chrom(j, ax=None):
     """ Plot KL divergence by chrom for grch37 sample
 
         Args:
@@ -154,34 +154,32 @@ def plot_KL_div_by_chrom(j):
         Returns:
             f       matplotlib figure
     """
-    f = plt.figure()
-    ax = f.add_subplot(111)
+    if not ax:
+        f = plt.figure()
+        ax = f.add_subplot(111)
 
     mu = j.median()
     mad = np.median(np.abs(j - mu))
-    # sd_1 = mu + mad
+    sd_1 = mu + mad
     sd_2 = mu + 2 * mad
 
     chroms = j.index.tolist()
-    # chroms[-2:] = ['23', '24']
     chroms = [int(c) for c in chroms]
     chroms = pd.Series(chroms)
 
+    cp = sns.color_palette()
     ax.plot(chroms[(j <= (sd_2)).tolist()], j[j <= (sd_2)], 'o', label='Pass')
-    # ax.plot(chroms[((j > sd_1) & (j <= sd_2)).tolist()], j[(j > sd_1) & (j <= sd_2)], 'o', label='Warn', color='orange')
-    ax.plot(chroms[(j > (sd_2)).tolist()], j[j > (sd_2)], 'o', label='Fail', color='red')
-    # ax.plot(sorted(chroms), [sd_1 for i in range(len(chroms))], '--', label='one std')
-    ax.plot(sorted(chroms), [sd_2 for i in range(len(chroms))], '--', label='two std')
-    ax.legend(loc='upper left')
+    ax.plot(chroms[(j > (sd_2)).tolist()], j[j > (sd_2)], 'o', label='Aberrant', color=cp[2])
+    ax.plot(sorted(chroms), [sd_2 for i in range(len(chroms))], '--', color='black')
+    ax.legend(bbox_to_anchor=(0, 1, 0.3, 0.2), loc=(0, 0), ncol=2, mode='expand', borderaxespad=0.)
     ax.set_xlabel('chromosome')
-    ax.set_ylabel('Symmetric KL Divergence')
+    ax.set_ylabel('KL Divergence')
 
     chroms = sorted(chroms)
     ax.xaxis.set_ticks(chroms)
-    # chroms[-2:] = ['X', 'Y']
     ax.xaxis.set_ticklabels(chroms)
 
-    return f
+    return ax
 
 def plot_chrom_classification(df_status, ax=None, add_cbar=True, cbar_ax=None):
     """ Plot chromosome classification matrix
@@ -230,7 +228,7 @@ def plot_chrom_classification(df_status, ax=None, add_cbar=True, cbar_ax=None):
         for y in [0.25, 0.5, 0.75]:
             cbar.ax.axvline(y, color='black', linewidth=1)
             
-    return f, ax
+    return ax
 
 def PSD_to_ACF(freq, psd, lags):
     """ Convert PSD to ACF using the Wiener-Khinchin theorem.
