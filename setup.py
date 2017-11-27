@@ -58,13 +58,13 @@ if __name__ == "__main__":
     setup(
         name = 'PaSDqc',
         description = "Quality control for single cell whole genome sequencing",
-        version = '1.0.0',
+        version = '1.1.0',
         packages = ['PaSDqc'],
         scripts = ['scripts/PaSDqc'],
         install_requires = install_requires,
         author = "Maxwell A. Sherman",
         author_email = "maxwell_sherman@hms.harvard.edu",
-        url = "https://github.com/parklab/PaSD-qc",
+        url = "https://github.com/parklab/PaSDqc",
         license = 'MIT',
         include_package_data = True,
         package_data = {

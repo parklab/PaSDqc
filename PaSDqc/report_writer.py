@@ -1,7 +1,7 @@
 # report_writer.py - methods for writing html report
 #
-# v 1.0.15 (revision2)
-# rev 2017-11-26 (MS: writing chromosome properties)
+# v 1.1.0
+# rev 2017-11-27 (MS: minor)
 # Notes:
 
 def writer(df, div_dend, div_psd, div_acf, div_chrom, div_pdf, fout):
@@ -21,7 +21,7 @@ def report_html(df_html, div_dend, div_psd, div_acf, div_chrom, div_amp):
         <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
     </head>
     <body>
-        <h1>MDAqc sample report</h1>
+        <h1>PaSD-qc sample report</h1>
 
         <!-- *** Section 1 *** --->
         <h2>Sample Summary Table</h2>
