@@ -1,7 +1,7 @@
 # PSDTools.py - classes for MDAqc Power Spectral Density calculations
 #
-# v 1.0.22 (revision2)
-# rev 2017-11-27 (MS: minor bug fixes)
+# v 1.1.1
+# rev 2017-11-29 (MS: bug fix estimating chromosome and sample curves)
 
 import pandas as pd
 import numpy as np
@@ -360,7 +360,7 @@ class SamplePSD(object):
 
         return j
 
-    def fit_chrom_curves(self, chrom_list, method='erf'):
+    def fit_chrom_curves(self, chrom_list, method='erf', bulk="bulk_1x.smooth3.spec"):
         """ Fit smooth curves to each chromosome
 
             Inputs:
@@ -373,7 +373,7 @@ class SamplePSD(object):
         for chrom in chrom_list:
             psd_chrom = self.df.loc[:, chrom]
             amp_chrom = amplicon.AmplDist(self.freq, psd_chrom)
-            amp_chrom.fit_curve(method=method)
+            amp_chrom.fit_curve(method=method, bulk=bulk)
             chrom_fit = amp_chrom.predict_vals(method=method)
 
             fits[chrom] = chrom_fit
@@ -384,7 +384,7 @@ class SamplePSD(object):
         self.chrom_curves = fits
         self.chrom_popts = popts
 
-    def calc_chrom_props(self, chrom_list, method='erf'):
+    def calc_chrom_props(self, chrom_list, method='erf', bulk="bulk_1x.smooth3.spec"):
         """ Calculate chromosome properties (KL div, sub amp var, supra amp var, min pos, 
                                              median amp size, lower amp size, upper amp size)
 
@@ -394,11 +394,11 @@ class SamplePSD(object):
         """
         if not hasattr(self, 'chrom_curves'):
             print("Fitting chromosome curves.")
-            self.fit_chrom_curves(chrom_list)
+            self.fit_chrom_curves(chrom_list, bulk=bulk)
 
         if not hasattr(self, 'sample_curves'):
             print("Fitting sample curves.")
-            self.fit_sample_curves()
+            self.fit_sample_curves(bulk=bulk)
 
         kl_div = self.KL_div_by_chrom()
         samp_fit = self.sample_curves['avg']
@@ -422,7 +422,7 @@ class SamplePSD(object):
             kl = kl_div[chrom]
             cl = self._classify_chrom(chrom, kl_div)
         
-            chrom_props = [kl, sub, supra, min_pos, int(median), int(mean), int(lower), int(upper), cl]
+            chrom_props = [kl, sub, supra, min_pos, np.int64(median), np.int64(mean), np.int64(lower), np.int64(upper), cl]
         
             # psd_chrom_list.append(psd_chrom)
             # amp_list.append(amp_chrom)
@@ -460,16 +460,16 @@ class SamplePSD(object):
 
         return cl
 
-    def infer_chrom_amplicon_dist(self, chrom_list, method='erf'):
+    def infer_chrom_amplicon_dist(self, chrom_list, method='erf', bulk="bulk_1x.smooth3.spec"):
         """ Infer the amplicon distribution for each chromosome.
         """
         if not hasattr(self, 'chrom_curves'):
             print("Fitting chromosome curves.")
-            self.fit_chrom_curves(chrom_list)
+            self.fit_chrom_curves(chrom_list, bulk=bulk)
 
         if not hasattr(self, 'sample_curves'):
             print("Fitting sample curves.")
-            self.fit_sample_curves()
+            self.fit_sample_curves(bulk=bulk)
 
         dist = {}
         for chrom in chrom_list:
@@ -478,7 +478,7 @@ class SamplePSD(object):
 
         self.chrom_dist = dist
 
-    def fit_sample_curves(self, method='erf'):
+    def fit_sample_curves(self, method='erf', bulk="bulk_1x.smooth3.spec"):
         """ Fit smooth curves to the sample avg PSD and 3 standard deviations above and below sample avg
 
             Inputs:
@@ -490,15 +490,15 @@ class SamplePSD(object):
         samp_upper = samp_avg + 3 * se
 
         amp_samp = amplicon.AmplDist(self.freq, samp_avg)
-        amp_samp.fit_curve()
+        amp_samp.fit_curve(bulk=bulk)
         samp_fit = amp_samp.predict_vals(method=method)
 
         amp_samp_lower = amplicon.AmplDist(self.freq, samp_lower)
-        amp_samp_lower.fit_curve()
+        amp_samp_lower.fit_curve(bulk=bulk)
         samp_fit_lower = amp_samp_lower.predict_vals(method=method)
 
         amp_samp_upper = amplicon.AmplDist(self.freq, samp_upper)
-        amp_samp_upper.fit_curve()
+        amp_samp_upper.fit_curve(bulk=bulk)
         samp_fit_upper = amp_samp_upper.predict_vals(method=method)
         
         self.sample_curves = {'period': 10**amp_samp.freq[method],
@@ -513,7 +513,7 @@ class SamplePSD(object):
 
         self.ampl = amp_samp
 
-    def calc_sample_props(self, method='erf'):
+    def calc_sample_props(self, method='erf', bulk="bulk_1x.smooth3.spec"):
         """ Calculate chromosome properties (KL div, sub amp var, supra amp var, min pos, 
                                              median amp size, lower amp size, upper amp size)
 
@@ -523,7 +523,7 @@ class SamplePSD(object):
         """
         if not hasattr(self, 'sample_curves'):
             print("Fitting sample curves.")
-            self.fit_sample_curves()
+            self.fit_sample_curves(bulk=bulk)
 
         samp_popt = self.sample_popts['avg']
         samp_fit = self.sample_curves['avg']
@@ -531,7 +531,7 @@ class SamplePSD(object):
 
         self.sample_props = [int(median), int(mean), int(lower), int(upper)]
 
-    def infer_sample_amplicon_dist(self, method='erf'):
+    def infer_sample_amplicon_dist(self, method='erf', bulk="bulk_1x.smooth3.spec"):
         """ Infer the sample amplicon distribution (wrapper for AmplDist.amplicon_dist)
 
             Input:
@@ -539,7 +539,7 @@ class SamplePSD(object):
         """
         if not hasattr(self, 'sample_curves'):
             print("Fitting sample curves.")
-            self.fit_sample_curves()
+            self.fit_sample_curves(bulk=bulk)
 
         pdf = self.ampl.amplicon_dist(method=method)
         self.sample_dist = {'freq': self.ampl.freq['dist'],

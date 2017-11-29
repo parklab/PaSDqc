@@ -1,7 +1,7 @@
 # PSDTools.py - classes for MDAqc Power Spectral Density calculations
 #
-# v 1.0.20 (rev2)
-# rev 2017-11-27 (MS: minor bug fixes)
+# v 1.1.1
+# rev 2017-11-29 (MS: better bulk psd loading)
 # Notes:
 
 import pandas as pd
@@ -43,9 +43,23 @@ def get_data_file(f):
 
 def load_bulk_psd(bulk="bulk_1x.smooth3.spec"):
     f_bulk = get_data_file(bulk)
-    psd_bulk = pd.Series.from_csv(f_bulk, index_col=0, header=None, sep="\t").as_matrix()
+
+    # If user provided bulk spec file
+    if bulk.endswith('chroms.spec'):
+        psd = pd.read_table(bulk, index_col=0)
+        psd_bulk = psd.median(axis=1).as_matrix()
+
+    # It's a package data file
+    else:
+        psd_bulk = pd.Series.from_csv(f_bulk, index_col=0, header=None, sep="\t").as_matrix()
 
     return psd_bulk
+
+# def load_bulk_psd(bulk="bulk_1x.smooth3.spec"):
+#     f_bulk = get_data_file(bulk)
+#     psd_bulk = pd.Series.from_csv(f_bulk, index_col=0, header=None, sep="\t").as_matrix()
+#
+#     return psd_bulk
 
 def chroms_from_build(build):
     """ Get list of chromosomes from a particular genome build
@@ -177,6 +191,7 @@ def plot_KL_div_by_chrom(j, ax=None):
 
     chroms = sorted(chroms)
     ax.xaxis.set_ticks(chroms)
+    # chroms[-2:] = ['X', 'Y']
     ax.xaxis.set_ticklabels(chroms)
 
     return ax

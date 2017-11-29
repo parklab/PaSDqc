@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 
-# MDAqc.py - top level executible for MDAqc package
+# PaSDqc - top level executible for PaSDqc package
 #
-# v 1.0.15 (revision2)
-# rev 2017-11-26 (MS: updated report generation)
+# v 1.1.1
+# rev 2017-11-29 (MS: minor bug fix)
 # Notes: 
 
 import os
@@ -120,8 +120,8 @@ def report(args):
 
     print("Fitting chromosome and sample curves")
     chroms = PaSDqc.extra_tools.chroms_from_build(args.build)
-    [psd.fit_chrom_curves(chroms) for psd in psd_list]
-    [psd.fit_sample_curves() for psd in psd_list]
+    [psd.fit_chrom_curves(chroms, bulk=args.bulk) for psd in psd_list]
+    [psd.fit_sample_curves(bulk=args.bulk) for psd in psd_list]
 
     print("Calculating chromosome properties")
     [psd.calc_chrom_props(chroms) for psd in psd_list]

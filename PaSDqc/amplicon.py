@@ -1,7 +1,7 @@
 # amplicon.py - classes for fitting amplicon distributions from PSDs
 #
-# v 1.0.13 (rev2)
-# rev 2017-11-26 (MS: minor update to staticmethod behavior of AmplDist.amplicon_dist())
+# v 1.1.1
+# rev 2017-11-29 (MS: minor bug fix)
 # Notes:
 
 import scipy.optimize
@@ -180,8 +180,9 @@ class AmplDist(object):
         f_fit = getattr(self, "func_{}".format(method))
 
         # Load bulk spectrum
-        f_bulk = extra_tools.get_data_file(bulk)
-        psd_bulk = pd.Series.from_csv(f_bulk, index_col=0, header=None, sep="\t").as_matrix()
+        # f_bulk = extra_tools.get_data_file(bulk)
+        # psd_bulk = pd.Series.from_csv(f_bulk, index_col=0, header=None, sep="\t").as_matrix()
+        psd_bulk = extra_tools.load_bulk_psd(bulk)
         # psd_bulk = np.loadtxt(bulk)
 
         # Normalize psd by bulk spectrum and shift
@@ -237,7 +238,7 @@ class AmplDist(object):
                 popt: params of fitted curve (optional. If not supplied, uses class popt)
                 method: curve-fitting method
         """
-        if popt is None:
+        if popt is None or np.isnan(popt[0]):
             if self.success:
                 popt = self.popt[method]
 

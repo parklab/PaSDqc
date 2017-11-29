@@ -1,7 +1,7 @@
 # plotly_tools.py - methods for easy plotly plot creation
 #
-# v 1.1.0a
-# rev 2017-11-27 (MS: minor)
+# v 1.1.1
+# rev 2017-11-29 (MS: minor bug fix)
 # Notes:
 
 import numpy as np
@@ -41,8 +41,9 @@ def dendrogram(nd, sample_list, p_cat_spec):
 
 def PSD_plot(freq, nd, sample_list, bulk='bulk_1x.smooth3.spec'):
     # PSD plot
-    f_bulk = extra_tools.get_data_file(bulk)
-    psd_bulk = pd.Series.from_csv(f_bulk, index_col=0, header=None, sep="\t").as_matrix()
+    # f_bulk = extra_tools.get_data_file(bulk)
+    # psd_bulk = pd.Series.from_csv(f_bulk, index_col=0, header=None, sep="\t").as_matrix()
+    psd_bulk = extra_tools.load_bulk_psd(bulk)
     # psd_bulk = np.loadtxt(bulk)
     # psd_norm = [10*np.log10(row / psd_bulk) for row in nd]
     # psd_smooth = [scipy.signal.savgol_filter(psd, 101, 3) for psd in psd_norm]
