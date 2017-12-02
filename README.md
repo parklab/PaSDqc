@@ -101,11 +101,11 @@ You can read more about the powers of PaSD-qc in [our paper at Nucleic Acids Res
       
 2. *Where can I find more data on my samples not included in the HTML report (e.g. chromosomal amplicon properties)?*
 
-    In the output directory, PaSD-qc creates a sub-directory `data`. With this directory you will find:
-        * <name>.table.txt: a tab-deliminated version of the table in the html report
-        * <name>.fit.txt: a table of the parameters fit when estimating the amplicon distribution for each sample
-        * >chrom: directory containing a file for each sample summarizing that sample's chromosome properties
-            * <name>_<sample_name>_chromProps.txt: each row is a chromosome; the columns include: KL-divergence, sub-amplicon variance, supra-amplicon variance, min_pos, median amplicon size, mean amplicon size, upper amplicon size, lower amplicon size, and classification (pass, possible gain, possible loss, fail).            
+    In the output directory, PaSD-qc creates a sub-directory `data`. With this directory you will find
+    + <name>.table.txt: a tab-deliminated version of the table in the html report
+    + <name>.fit.txt: a table of the parameters fit when estimating the amplicon distribution for each sample
+    + chrom: directory containing a file for each sample summarizing that sample's chromosome properties
+        + <name>_<sample_name>_chromProps.txt: each row is a chromosome; the columns include: KL-divergence, sub-amplicon variance, supra-amplicon variance, min_pos, median amplicon size, mean amplicon size, upper amplicon size, lower amplicon size, and classification (pass, possible gain, possible loss, fail).            
 
 3. *How do I know if my sample is high or low quality?*
 
@@ -118,14 +118,21 @@ You can read more about the powers of PaSD-qc in [our paper at Nucleic Acids Res
 4. *Can I use PaSD-qc to evaluate whether sub-chromosomal regions are poorly amplified?*
 
     Yes. See `examples/07_example_region_blacklist` for instructions.
+    
+5. *What should I supply as a bulk sample with the `-u` flag?*
 
-5. *I deleted the html report. Do I have to rerun the whole pipeline?*
+    The `-u` flag is optional. By default, PaSD-qc will use a generic bulk PSD to normalize your single-cell samples. This will work fine for general purpose evaluation of samples. However, if you performed bulk sequencing at the same time as you sequenced the single cells, you may get more accurate estimates by using your own bulk sample. To do this, simply run PaSD-qc on the bulk sample and then supply the path to the resulting PSD file using the `-u` flag when profiling the single cells. E.g 
+    ```
+    PaSDqc QC -u /path/to/your/<bulk_name>.chroms.spec ...
+    ```
+
+6. *I deleted the html report. Do I have to rerun the whole pipeline?*
 
    No. The steps of PaSD-qc can be run separately. To regenerate the report, simply run `./PaSDqc.py report -d /path/to/analysis/dir -c categorical_spectra_XX.txt`. Regenerating a report generally takes less than 1 minute.
 
    To see all functions of PaSD-qc, run `./PaSD-qc.py -h`.
 
-6. *Do you have some example data I can try out on?*
+7. *Do you have some example data I can try out on?*
 
    Yes. The source code is distributed with an `examples` directory, which contains comprehensive instructions on basic and advanced usage of PaSD-qc. The tutorials are distributed as Jupyter notebooks, which can run once PaSDqc has been installed. To check that your installation is functional, you can re-compile the report in `01_example_report` navigating to the cloned repository and running
    ```
@@ -133,17 +140,17 @@ You can read more about the powers of PaSD-qc in [our paper at Nucleic Acids Res
    ```
    This will recreate the html report in the directory `examples/01_examples_report`. If you want to start with BAMs, the samples used in our [paper](https://doi.org/10.1093/nar/gkx1195) are available on SRA. See the Availability section of the paper for accession numbers.
 
-7. *Doesn't plotly upload its plots to the interwebs? Can anyone see my PaSD-qc plots??*
+8. *Doesn't plotly upload its plots to the interwebs? Can anyone see my PaSD-qc plots??*
 
    Rest easy, none of your plots are uploaded to the internet. We use the plotly javascript API to embed the plots directly into the html report. This means that a report is entirely self-contained, so you can send it around to collaborators without fear of plots not loading. It also means that the reports can be fairly large (several MBs), as the data required to generate the plots must also be embedded in the html file.
 
-8. *Can I used PaSD-qc to evaluate my single-cell whole-exome sequencing?*
+9. *Can I used PaSD-qc to evaluate my single-cell whole-exome sequencing?*
 
     In theory, yes, the approach should work on whole-exome sequencing. However, the method to perform the power spectral density estimation should probably be adapted to use information about the targeted capture regions. We are eager to do this. If you have high quality single-cell WES data and are interested in PaSDqc analysis, please contact us. We would be happy to work with you to ensure the results are high-quality. 
 
-9. *I want to use PaSD-qc to analyze the quality of samples aligned to a different genome build. Is this possible*
-
-   Yes, but you'll need to a bed file of uniquely mappable positions for the genome. Contact us for help with this.
+10. *I want to use PaSD-qc to analyze the quality of samples aligned to a different genome build. Is this possible*
+    
+    Yes, but you'll need to a bed file of uniquely mappable positions for the genome. Contact us for help with this.
 
 ## Support
 __Maxwell Sherman__: maxwell\_sherman {at} hms.harvard.edu
