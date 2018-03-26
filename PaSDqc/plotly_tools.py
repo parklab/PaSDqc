@@ -182,7 +182,7 @@ def chrom_KL_plot(psd_list, sample_list):
                   font=dict(size=18),
                   xaxis = dict(tickmode='array',
                                ticktext=text.tolist(),
-                               tickvals=ticks
+                               tickvals=ticks,
                                title='Chromosome'
                           ),
                   yaxis=dict(title='KL-divergence'),
