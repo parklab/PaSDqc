@@ -232,7 +232,7 @@ def parse_args():
     parser['PSD'].add_argument('-n', '--n_procs', default=1, type=int, help='number of cores to use')
     parser['PSD'].add_argument('-p', '--pattern', default=None, help='pattern to match when finding samples')
     parser['PSD'].add_argument('--noclean', dest='clean', action='store_false', default=True, help='Do not delete pos / cov files automatically')
-    parser['PSD'].add_argument('-b', '--build', default='grch37', choices=['grch37, hg19'], help='genome build')
+    parser['PSD'].add_argument('-b', '--build', default='grch37', choices=['grch37', 'hg19'], help='genome build')
     parser['PSD'].set_defaults(func=PSD)
 
     parser['report'] = parser['subparse'].add_parser('report', help='Generate HTML report of MDA sample quality')
