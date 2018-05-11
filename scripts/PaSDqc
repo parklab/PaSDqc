@@ -99,7 +99,7 @@ def _build_and_save(dir_in, sample, clean, fout, build):
     """
 
     print(fout)
-    psd = PaSDqc.PSDTools.SamplePSD.build_from_dir(str(dir_in), sample=sample, clean=clean)
+    psd = PaSDqc.PSDTools.SamplePSD.build_from_dir(str(dir_in), sample=sample, clean=clean, build=build)
     psd.save(str(fout))
 
 def report(args):
